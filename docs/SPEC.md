@@ -113,6 +113,6 @@ Per ADR-0001: the PRD's third workflow, AI/embedding clustering of solutions, k-
 ## Further Notes
 
 - The domain glossary is `CONTEXT.md` at the repo root — use its vocabulary (Session, Deck, Confidence score, Suppression, Crowdsourced/Preset, …) in code, UI copy, and tests. `docs/adr/0001-brief-over-prd-scope.md` records the scope no-s.
-- The existing `server.js` + `public/` prototype is a behavioral reference for flow and feel only. It is not a foundation; nothing in it should be assumed correct beyond the UX it demonstrates.
+- The prototype (`server.js` + `public/`, removed from the tree, still in git history) was a behavioral reference only. The UX reference is now the mocks in `docs/images/` — each frontend ticket links its mock.
 - Room cap default 8, maximum ~100 — no special engineering beyond one Socket.IO room per session.
 - Suppression threshold N default 3, kept as a single named constant so the client can tune it.
