@@ -181,6 +181,8 @@ GET /api/sessions                 → ALL sessions of the authenticated host, li
                                     [{ id, problem, workflow, phase,
                                        joinCode?,                    // only while phase != results
                                        participants: number, cap, createdAt, closedAt? }]
+                                    // newest first (createdAt desc); a valid token with no
+                                    // hosted sessions gets 200 [] — the 404 rule guards ids
 GET /api/sessions/:id/report      → requires phase = results — 409 for a live session
                                     { session: { problem, workflow, participants, closedAt },
                                       // participants = MEMBER count (exceeds ballot count
