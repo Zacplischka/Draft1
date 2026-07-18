@@ -42,6 +42,9 @@ export async function startHarness() {
     password: 'postgres',
     database: 'draft1_test',
   });
+  // Idle clients emit 'error' when embedded pg is stopped (57P01) — expected at teardown,
+  // and an unhandled 'error' event would fail the run.
+  pool.on('error', () => {});
   await migrate(pool);
 
   const tokens = new Map<string, { userId: string; displayName: string }>();
