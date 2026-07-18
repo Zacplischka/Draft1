@@ -4,7 +4,7 @@ import type { Emit } from './create-session';
 import { percentComplete, submitSolution } from './submit-solution';
 import { addSolution, beginCuration, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
 
-function JoinCode({ code }: { code: string }) {
+export function JoinCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div>
@@ -30,20 +30,19 @@ function JoinCode({ code }: { code: string }) {
   );
 }
 
-function Stepper({ steps }: { steps: string[] }) {
-  // Lobby is always the live step on this screen.
+export function Stepper({ steps, active = 0 }: { steps: string[]; active?: number }) {
   return (
     <div className="mt-4 flex items-center rounded-2xl border border-slate-200 bg-white px-5 py-4">
       {steps.map((label, i) => (
         <div key={label} className={`flex items-center ${i > 0 ? 'flex-1' : ''}`}>
           {i > 0 && <span className="mx-2 h-px flex-1 bg-slate-300 sm:mx-3" />}
           <span className="flex items-center gap-2">
-            {i === 0 ? (
+            {i === active ? (
               <span className="h-3 w-3 rounded-full bg-indigo-600" />
             ) : (
               <span className="h-3 w-3 rounded-full border-2 border-slate-300 bg-white" />
             )}
-            <span className={`text-sm ${i === 0 ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>{label}</span>
+            <span className={`text-sm ${i === active ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>{label}</span>
           </span>
         </div>
       ))}

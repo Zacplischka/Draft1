@@ -19,6 +19,11 @@ export const editSolution = (emit: Emit, solutionId: string, text: string) =>
   mustAck(emit, 'solution:edit', { solutionId, text });
 export const deleteSolution = (emit: Emit, solutionId: string) =>
   mustAck(emit, 'solution:delete', { solutionId });
+export const combineSolutions = (emit: Emit, solutionIds: string[], text: string) =>
+  mustAck(emit, 'solution:combine', { solutionIds, text });
+
+/** The combine modal's prefill — the server's default join, editable before confirming. */
+export const defaultCombinedText = (texts: string[]) => texts.join(' / ');
 
 /** Always legal, even with zero submissions — empty-deck gates only voting:start (contract). */
 export const beginCuration = (emit: Emit) => mustAck(emit, 'curation:start', {});
