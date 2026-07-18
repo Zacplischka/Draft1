@@ -6,14 +6,18 @@ import {
   CAP_DEFAULT,
   CAP_MAX,
   CAP_MIN,
+  DEPARTMENTS,
   PROBLEM_MAX_LENGTH,
+  ROLES,
+  TENURES,
   type Ack,
   type ErrorCode,
   type SessionState,
 } from '../shared/contract';
 
-/** Verifies a handshake token; null → connect_error 'unauthorized'. Stubbed in tests. */
-export type VerifyToken = (token: string) => Promise<{ userId: string } | null>;
+/** Verifies a handshake token; null → connect_error 'unauthorized'. Stubbed in tests.
+ *  displayName is the token's Google name — the only source of names, never the client. */
+export type VerifyToken = (token: string) => Promise<{ userId: string; displayName: string } | null>;
 
 export type RoomServer = { http: HttpServer; io: Server; close: () => Promise<void> };
 
@@ -34,6 +38,7 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     const verified = typeof token === 'string' ? await verifyToken(token).catch(() => null) : null;
     if (!verified) return next(new Error('unauthorized'));
     socket.data.userId = verified.userId;
+    socket.data.displayName = verified.displayName;
     next();
   });
 
@@ -109,11 +114,21 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     }
   }
 
+  // Every event except these two requires a completed profile (contract matrix).
+  const PROFILE_EXEMPT = new Set(['profile:set', 'profile:get']);
+
+  async function requireProfile(userId: string): Promise<void> {
+    const { rowCount } = await pool.query('select 1 from profiles where id = $1', [userId]);
+    if (!rowCount) throw new SeamError('profile-required');
+  }
+
   // Ack-envelope wrapper: every event acks { ok: true, ... } or { error: ErrorCode } (contract).
+  // The profile gate lives here so future handlers can't forget it.
   function handle<T extends object>(socket: Socket, event: string, handler: (payload: any) => Promise<T>): void {
     socket.on(event, async (payload, ack) => {
       if (typeof ack !== 'function') return;
       try {
+        if (!PROFILE_EXEMPT.has(event)) await requireProfile(socket.data.userId);
         ack({ ok: true, ...(await handler(payload)) } satisfies Ack<T>);
       } catch (err) {
         if (err instanceof SeamError) return ack({ error: err.code } satisfies Ack);
@@ -144,6 +159,30 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
 
   io.on('connection', (socket) => {
     const userId: string = socket.data.userId;
+
+    handle(socket, 'profile:set', async (p) => {
+      const { department, role, tenure } = p ?? {};
+      if (!DEPARTMENTS.includes(department) || !ROLES.includes(role) || !TENURES.includes(tenure)) {
+        throw new SeamError('invalid-input');
+      }
+      // Upsert: display_name always from the verified token, never the payload —
+      // refreshed on every profile write, so it tracks Google name changes.
+      await pool.query(
+        `insert into profiles (id, display_name, department, role, tenure)
+         values ($1, $2, $3, $4, $5)
+         on conflict (id) do update
+           set display_name = excluded.display_name,
+               department = excluded.department, role = excluded.role, tenure = excluded.tenure`,
+        [userId, socket.data.displayName, department, role, tenure],
+      );
+      return {};
+    });
+
+    handle(socket, 'profile:get', async () => {
+      // Exempt from the profile gate — how the client detects first-time users.
+      const { rows } = await pool.query('select department, role, tenure from profiles where id = $1', [userId]);
+      return { displayName: socket.data.displayName, profile: rows[0] ?? null };
+    });
 
     handle(socket, 'session:create', async (p) => {
       const { problem, workflow, cap = CAP_DEFAULT, hostParticipates } = p ?? {};
