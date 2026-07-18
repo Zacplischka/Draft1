@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { SCORE_MAX, SCORE_MIN, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
+import { percentComplete } from './submit-solution';
+import { ProgressBar } from './HostLobby';
 import {
   angleToScore,
   clearScores,
@@ -344,12 +346,22 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
               ✓
             </span>
             <h1 className="mt-4 text-2xl font-semibold text-slate-900">
-              {ballot === 'busy' ? 'Submitting your ballot…' : 'Ballot submitted'}
+              {ballot === 'busy' ? 'Submitting your ballot…' : 'Your ballot is submitted'}
             </h1>
-            <p className="mt-2 text-slate-500">
-              {state.votingProgress
-                ? `${state.votingProgress.voted} of ${state.votingProgress.total} Participants have voted.`
-                : 'Waiting for everyone else to finish.'}
+            <p className="mt-2 text-slate-500">Waiting for others to finish.</p>
+            {state.votingProgress && (
+              <div className="mt-8 text-left">
+                <div className="font-medium text-slate-900">
+                  {state.votingProgress.voted} of {state.votingProgress.total} Participants voted
+                </div>
+                <ProgressBar pct={percentComplete(state.votingProgress.voted, state.votingProgress.total)} />
+              </div>
+            )}
+            <p className="mt-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-left text-sm text-green-800">
+              <span aria-hidden>👥</span> Your full ballot was submitted together.
+            </p>
+            <p className="mt-8 text-sm text-slate-500">
+              This Session will complete automatically when everyone has voted.
             </p>
           </div>
         ) : ballot === 'error' ? (

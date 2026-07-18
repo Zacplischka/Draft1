@@ -11,9 +11,11 @@ import { JoinSession } from './JoinSession';
 import { Lobby } from './Lobby';
 import { CrowdsourcedParticipant } from './CrowdsourcedParticipant';
 import { HostLobby } from './HostLobby';
+import { HostVotingControl } from './HostVotingControl';
 import { PresetParticipant } from './PresetParticipant';
 import { Voting } from './Voting';
 import { Curation } from './Curation';
+import { everyoneVotedAdvance } from './host-voting';
 
 type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
 
@@ -27,6 +29,8 @@ export default function App() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const [authEpoch, setAuthEpoch] = useState(0); // bumped after dev sign-in to re-run the effect
+  const prevSnapshot = useRef<SessionState | null>(null);
+  const [everyoneVoted, setEveryoneVoted] = useState(false); // "opening the Ranked list…" toast
 
   useEffect(() => {
     let disposed = false;
@@ -55,7 +59,15 @@ export default function App() {
         });
       });
       socket.on('session:state', (s: SessionState) => {
-        if (!disposed) setSessionState(s);
+        if (disposed) return;
+        if (everyoneVotedAdvance(prevSnapshot.current, s)) {
+          setEveryoneVoted(true);
+          setTimeout(() => {
+            if (!disposed) setEveryoneVoted(false);
+          }, 4000);
+        }
+        prevSnapshot.current = s;
+        setSessionState(s);
       });
       socket.on('connect', () => {
         unauthorized = 0;
@@ -188,9 +200,17 @@ export default function App() {
         />
       );
     }
-    // Voting deck (#18) — every counted participant, including a participating host.
-    // A hostParticipates=false host stays on the placeholder (host control is #19).
-    if (s && s.phase === 'voting' && (!s.isHost || s.hostParticipates)) {
+    if (s && s.phase === 'voting') {
+      // Host control (#19) once the host has no ballot left to cast — a participating
+      // host votes on the deck (#18) first, then lands on the control screen.
+      if (s.isHost && (!s.hostParticipates || s.me.voted)) {
+        return (
+          <HostVotingControl
+            state={s}
+            emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+          />
+        );
+      }
       return (
         <Voting
           state={s}
@@ -210,13 +230,22 @@ export default function App() {
       return <PresetParticipant state={s} />;
     }
     return (
-      <Lobby
-        state={s}
-        onBack={() => {
-          setSessionState(null);
-          setRoute('home');
-        }}
-      />
+      <>
+        <Lobby
+          state={s}
+          onBack={() => {
+            setSessionState(null);
+            setRoute('home');
+          }}
+        />
+        {/* Everyone-voted auto-advance (#19) — phase flips to results, which lands here
+            until the Ranked list (#20) exists. */}
+        {everyoneVoted && (
+          <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 shadow-lg">
+            <span aria-hidden>✅</span> Everyone has voted — opening the Ranked list…
+          </div>
+        )}
+      </>
     );
   }
   return (

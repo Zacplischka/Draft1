@@ -50,7 +50,7 @@ export function Stepper({ steps, active = 0 }: { steps: string[]; active?: numbe
   );
 }
 
-function ProgressBar({ pct }: { pct: number }) {
+export function ProgressBar({ pct }: { pct: number }) {
   return (
     <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
       <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
