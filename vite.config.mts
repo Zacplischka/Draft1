@@ -10,7 +10,10 @@ export default defineConfig({
   root: 'src/client',
   plugins: [react(), tailwindcss()],
   server: {
-    proxy: { '/socket.io': { target: `http://localhost:${enginePort}`, ws: true } },
+    proxy: {
+      '/socket.io': { target: `http://localhost:${enginePort}`, ws: true },
+      '/api': { target: `http://localhost:${enginePort}` },
+    },
   },
   build: { outDir: '../../dist', emptyOutDir: true },
 });
