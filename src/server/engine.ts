@@ -9,6 +9,7 @@ import {
   DEPARTMENTS,
   PROBLEM_MAX_LENGTH,
   ROLES,
+  SOLUTION_MAX_LENGTH,
   TENURES,
   type Ack,
   type ErrorCode,
@@ -141,8 +142,14 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
   }
 
   async function joinRoom(socket: Socket, sessionId: string): Promise<void> {
+    socket.data.sessionId = sessionId; // in-session events ({ text }, {}) resolve their session from here
     await socket.join(sessionId);
     await broadcastState(sessionId);
+  }
+
+  function sessionOf(socket: Socket): string {
+    if (typeof socket.data.sessionId !== 'string') throw new SeamError('not-found');
+    return socket.data.sessionId;
   }
 
   // The one query behind preview and code-join: active (phase != results) session by join code.
@@ -262,6 +269,68 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
       }
       await joinRoom(socket, s.id);
       return { sessionId: s.id };
+    });
+
+    handle(socket, 'solution:submit', async (p) => {
+      const text = p?.text;
+      if (typeof text !== 'string' || text.trim().length === 0 || text.length > SOLUTION_MAX_LENGTH) {
+        throw new SeamError('invalid-input');
+      }
+      const sessionId = sessionOf(socket);
+      try {
+        await tx(async (c) => {
+          // Row lock: curation:start's phase UPDATE queues behind this tx, so phase can't flip mid-submit.
+          const { rows } = await c.query(
+            'select workflow, phase, host_id, host_participates from sessions where id = $1 for update',
+            [sessionId],
+          );
+          const s = rows[0];
+          if (!s) throw new SeamError('not-found');
+          if (s.workflow !== 'crowdsourced' || s.phase !== 'lobby') throw new SeamError('bad-phase');
+          if (s.host_id === userId && !s.host_participates) throw new SeamError('not-participant');
+          const m = await c.query('select submitted from memberships where session_id = $1 and user_id = $2', [
+            sessionId,
+            userId,
+          ]);
+          if (!m.rowCount) throw new SeamError('not-found');
+          if (m.rows[0].submitted) throw new SeamError('already-submitted');
+          // submitted_by is stored for the one-per-participant constraint — never serialized (ADR-0002).
+          await c.query('insert into solutions (session_id, text, submitted_by) values ($1, $2, $3)', [
+            sessionId,
+            text,
+            userId,
+          ]);
+          // Immutable snapshot: me.submissionText reads this, so it survives curation hard-deletes.
+          await c.query('update memberships set submitted = true, submission_text = $3 where session_id = $1 and user_id = $2', [
+            sessionId,
+            userId,
+            text,
+          ]);
+        });
+      } catch (err: any) {
+        if (err?.code === '23505') throw new SeamError('already-submitted'); // unique (session_id, submitted_by) race
+        throw err;
+      }
+      await broadcastState(sessionId);
+      return {};
+    });
+
+    handle(socket, 'curation:start', async () => {
+      const sessionId = sessionOf(socket);
+      const { rows } = await pool.query('select host_id, workflow, phase from sessions where id = $1', [sessionId]);
+      const s = rows[0];
+      if (!s) throw new SeamError('not-found');
+      if (s.host_id !== userId) throw new SeamError('not-host');
+      if (s.workflow !== 'crowdsourced' || s.phase !== 'lobby') throw new SeamError('bad-phase');
+      // Legal with zero solutions — empty-deck gates only voting:start (contract).
+      // Phase guard in the WHERE makes a double-fire lose atomically.
+      const { rowCount } = await pool.query(
+        `update sessions set phase = 'curation' where id = $1 and phase = 'lobby'`,
+        [sessionId],
+      );
+      if (!rowCount) throw new SeamError('bad-phase');
+      await broadcastState(sessionId);
+      return {};
     });
   });
 
