@@ -31,8 +31,9 @@ solutions
   id            uuid PK
   session_id  → sessions
   text          text
-  submitted_by  uuid → profiles, NULL for combined rows
-                UNIQUE (session_id, submitted_by)  -- one-per-participant, in the schema
+  submitted_by  uuid → profiles, NULL for combined rows AND all preset-workflow rows
+                UNIQUE (session_id, submitted_by)  -- one-per-participant; bites only
+                                                   -- crowdsourced originals (NULLs exempt)
                 -- hard delete on curation: the table IS the deck
 
 ballots                            -- one per voter per session
