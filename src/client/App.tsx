@@ -12,6 +12,7 @@ import { Lobby } from './Lobby';
 import { CrowdsourcedParticipant } from './CrowdsourcedParticipant';
 import { HostLobby } from './HostLobby';
 import { PresetParticipant } from './PresetParticipant';
+import { Voting } from './Voting';
 
 type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
 
@@ -173,6 +174,16 @@ export default function App() {
     if (s && s.isHost && s.phase === 'lobby') {
       return (
         <HostLobby
+          state={s}
+          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+        />
+      );
+    }
+    // Voting deck (#18) — every counted participant, including a participating host.
+    // A hostParticipates=false host stays on the placeholder (host control is #19).
+    if (s && s.phase === 'voting' && (!s.isHost || s.hostParticipates)) {
+      return (
+        <Voting
           state={s}
           emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
         />
