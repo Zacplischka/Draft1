@@ -64,8 +64,12 @@ type ErrorCode =
                    //   A NON-member's sessionId join acks `not-found` even when the id
                    //   resolves — don't leak session existence
 'curation:start'   {}                             // host, crowdsourced: lobby → curation;
-                                                  // closes further submissions;
-                                                  // empty-deck if no solutions yet
+                                                  // closes further submissions. Legal with
+                                                  // ZERO solutions — the host recovers via
+                                                  // solution:add in curation; empty-deck
+                                                  // gates only voting:start. (Mock 06's "at
+                                                  // least one Solution" copy refers to
+                                                  // starting the VOTE, not curation)
 'solution:submit'  { text }                       // crowdsourced participant, lobby only, once
 'solution:add'     { text }                       // host — preset: lobby; crowdsourced:
                                                   // curation (recovers an emptied deck; the
@@ -118,14 +122,20 @@ type SessionState = {
   phase: 'lobby' | 'curation' | 'voting' | 'results';
   participants: { count: number; cap: number };
   isHost: boolean; hostParticipates: boolean;
-  me: { submitted: boolean; voted: boolean };
+  me: { submitted: boolean; voted: boolean;
+        submissionText?: string };  // the member's OWN crowdsourced submission, echoed back
+                                    // (mock 05's "Your submission is saved" panel; lost-device
+                                    // rejoin needs it server-side) — never anyone else's
   submissions?: { submitted: number; total: number }; // crowdsourced lobby/curation; counts
                                                       // only. total = currently joined COUNTED
                                                       // participants (a hostParticipates=false
                                                       // host is excluded), NOT the cap
-  deck?: { id: string; text: string; combined: boolean }[];   // NO authors, ever. `combined`
-                                                              // is a seam-test observable —
-                                                              // no UI is required to render it
+  deck?: { id: string; text: string; combined: boolean }[];   // NO authors, ever. Served in
+                                                              // INSERTION order (created_at),
+                                                              // stable across snapshots and
+                                                              // rejoins. `combined` is a seam-
+                                                              // test observable — no UI is
+                                                              // required to render it
   votingProgress?: { voted: number; total: number };  // total = counted participants
                                                       // (hostParticipates-aware)
   roster?: { displayName: string; voted: boolean }[];         // HOST ONLY, voting phase —
