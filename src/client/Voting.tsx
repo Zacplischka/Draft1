@@ -245,6 +245,8 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
   });
   const [scores, setScores] = useState<Scores>(initial.saved);
   const resumed = initial.resumed;
+  // Rejoin-mid-vote bridge (#23, mock 09): saved scores → "Voting resumed" + Continue voting.
+  const [bridge, setBridge] = useState(initial.resumed);
   const [mode, setMode] = useState<'swipe' | 'manual'>('swipe');
   const [editBeforeSubmit, setEditBeforeSubmit] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
@@ -328,13 +330,27 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           </summary>
         </details>
 
-        {resumed && !voted && (
+        {resumed && !voted && !bridge && (
           <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
             ✓ Voting resumed — picking up where you left off.
           </p>
         )}
 
-        {ballot === 'ended' ? (
+        {bridge && !voted && ballot === 'idle' ? (
+          <div className="mt-16 text-center">
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
+              ✓
+            </span>
+            <h1 className="mt-4 text-2xl font-semibold text-slate-900">Voting resumed</h1>
+            <p className="mt-2 text-slate-500">Your previous scores are saved on this device.</p>
+            <button
+              onClick={() => setBridge(false)}
+              className="mt-8 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700"
+            >
+              Continue voting
+            </button>
+          </div>
+        ) : ballot === 'ended' ? (
           // Raced voting:close — no ballot was counted; the results snapshot routes away.
           <div className="mt-16 text-center">
             <h1 className="text-2xl font-semibold text-slate-900">Voting has ended</h1>
@@ -405,7 +421,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           </>
         ) : null}
       </main>
-      {!voted && ballot !== 'busy' && ballot !== 'ended' && (
+      {!voted && !bridge && ballot !== 'busy' && ballot !== 'ended' && (
         <footer className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white">
           <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
             <span className="text-slate-700">Edit before submit</span>
