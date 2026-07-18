@@ -7,6 +7,7 @@ The single test seam (see `docs/SPEC.md` Testing Decisions). Every ticket implem
 - Socket.IO. The handshake carries `{ token }`; the server verifies it via Supabase before any handler runs (the stubbed boundary in tests — test identities are minted **with profiles preattached**). Client-supplied identity is never read.
 - Every client→server event acks `{ ok: true, ...data }` or `{ error: ErrorCode }`.
 - After every state mutation, and on (re)join, the server broadcasts a role-filtered `session:state` snapshot to the room. No granular diff events exist.
+- There is **no leave event**. "Leave session" / "Done" in the UI is client navigation; Membership is permanent. A member who leaves for good can therefore hold up everyone-voted auto-completion — the host's `voting:close` is the escape hatch.
 
 ```ts
 type ErrorCode =
@@ -28,7 +29,9 @@ type ErrorCode =
 ## Client → Server
 
 ```ts
-'profile:set'      { department, role, tenure }   // app-shipped enums. Upsert — callable
+'profile:set'      { department, role, tenure }   // app-shipped enums (values pending the
+                                                  // client's lists — issue #25; pin them HERE
+                                                  // when decided). Upsert — callable
                                                   // any time; the NEXT ballot snapshots
                                                   // the new values (past reports unchanged)
 'session:create'   { problem, workflow: 'crowdsourced' | 'preset',
@@ -133,5 +136,8 @@ scores (integers). The consensus badge is client-derived from width `w = p75 −
 
 ² Cohort `n` is shown even for suppressed cells — it reveals attendance, never scores; only
 score values are suppressed.
+
+The `.csv` endpoint authenticates by bearer header like the rest — a plain `<a href>` can't
+send one, so clients download via authenticated fetch → blob.
 
 **Suppression scope:** demographic cohort cells with fewer than N (=3) ballots only. Whole-room aggregates — the ranked list, overall avg and spread — are always shown regardless of room size.
