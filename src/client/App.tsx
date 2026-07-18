@@ -15,9 +15,11 @@ import { HostVotingControl } from './HostVotingControl';
 import { PresetParticipant } from './PresetParticipant';
 import { Voting } from './Voting';
 import { Curation } from './Curation';
+import { RankedList } from './RankedList';
 import { everyoneVotedAdvance } from './host-voting';
+import { SESSION_ID_KEY } from './create-session';
 
-type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
+type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session' | 'report';
 
 export default function App() {
   const [route, setRoute] = useState<Route>('loading');
@@ -229,23 +231,50 @@ export default function App() {
     if (s && !s.isHost && s.workflow === 'preset' && s.phase === 'lobby') {
       return <PresetParticipant state={s} />;
     }
+    if (s && s.phase === 'results') {
+      return (
+        <>
+          <RankedList
+            state={s}
+            onDone={() => {
+              localStorage.removeItem(SESSION_ID_KEY); // Done clears the rejoin key (contract)
+              setSessionId(null);
+              setSessionState(null);
+              setRoute('home');
+            }}
+            onOpenReport={() => setRoute('report')}
+          />
+          {/* Everyone-voted auto-advance toast (#19) rides the voting → results flip. */}
+          {everyoneVoted && (
+            <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 shadow-lg">
+              <span aria-hidden>✅</span> Everyone has voted — opening the Ranked list…
+            </div>
+          )}
+        </>
+      );
+    }
     return (
-      <>
-        <Lobby
-          state={s}
-          onBack={() => {
-            setSessionState(null);
-            setRoute('home');
-          }}
-        />
-        {/* Everyone-voted auto-advance (#19) — phase flips to results, which lands here
-            until the Ranked list (#20) exists. */}
-        {everyoneVoted && (
-          <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 shadow-lg">
-            <span aria-hidden>✅</span> Everyone has voted — opening the Ranked list…
-          </div>
-        )}
-      </>
+      <Lobby
+        state={s}
+        onBack={() => {
+          setSessionState(null);
+          setRoute('home');
+        }}
+      />
+    );
+  }
+  if (route === 'report') {
+    // Mount point for the Host report screen (#21) — placeholder until it lands.
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 p-6">
+        <p className="text-slate-500">The Host report is under construction.</p>
+        <button
+          onClick={() => setRoute('session')}
+          className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+        >
+          Back to Ranked list
+        </button>
+      </div>
     );
   }
   return (
