@@ -56,6 +56,6 @@ ballot_scores
 - **Ballots snapshot demographics at submission.** Reports are historical facts — profile edits and re-orgs never rewrite an old report, and suppression counts can't drift below N later.
 - **Reports are computed on read** from ballot rows — no report table. Snapshots make results stable forever; a suppression fix reaches past reports.
 - **Ballots are atomic.** One row + full deck of scores accepted in a single submission, or nothing. No partial vote state exists; a mid-swipe refresh restarts the deck.
-- **Join codes recycle.** Unique only among sessions not yet in `results` (partial unique index); 6-digit space never depletes.
+- **Join codes recycle.** Unique only among sessions not yet in `results` (partial unique index); 6-digit space never depletes. Abandoned sessions that never reach `results` hold their code indefinitely — accepted: the code space dwarfs plausible abandonment; revisit only if collisions ever occur.
 - **Curation hard-deletes.** Delete removes the row; combine deletes sources and inserts one new row (`submitted_by` NULL, host-editable text). No status filtering anywhere.
 - **Live-room rehydration needs no extra tables.** Phase lives on the session; solutions/memberships/ballots are already persisted. Socket presence is in-memory only.

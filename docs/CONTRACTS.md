@@ -8,6 +8,8 @@ The single test seam (see `docs/SPEC.md` Testing Decisions). Every ticket implem
 - Every client→server event acks `{ ok: true, ...data }` or `{ error: ErrorCode }`.
 - After every state mutation, and on (re)join, the server broadcasts a role-filtered `session:state` snapshot to the room. No granular diff events exist.
 - There is **no leave event**. "Leave session" / "Done" in the UI is client navigation; Membership is permanent. A member who leaves for good can therefore hold up everyone-voted auto-completion — the host's `voting:close` is the escape hatch.
+- **The host is a member**: counted in `participants.count` and against `cap`. `hostParticipates` affects only the submit/vote denominators, never seating.
+- **Shared contract module**: the types and constants here (ErrorCode, SessionState, enum lists, suppression N, consensus thresholds) live in ONE shared module created by the walking skeleton; server and client both import it — no hand-duplication.
 
 ```ts
 type ErrorCode =
@@ -43,8 +45,11 @@ type ErrorCode =
                    // resolves the same sessions a code join would (phase != results);
                    // client uses phase/count to render found / full / voting-started screens
 'session:join'     { joinCode } | { sessionId }
-                   // joinCode → NEW joins only, resolves only sessions not in results
-                   //   (codes recycle at results — never a rejoin key)
+                   // joinCode → resolves only sessions not in results (codes recycle at
+                   //   results — never a rejoin key there). A NEW joiner is admitted subject
+                   //   to cap/phase gates; an EXISTING member is idempotently REJOINED —
+                   //   legal even during voting (lost-device recovery; cap/phase gates
+                   //   don't apply to members)
                    // sessionId → REJOIN of an existing member, legal in ANY phase,
                    //   returns the current snapshot; clients store sessionId from the ack
 'curation:start'   {}                             // host, crowdsourced: lobby → curation;
@@ -52,7 +57,9 @@ type ErrorCode =
                                                   // empty-deck if no solutions yet
 'solution:submit'  { text }                       // crowdsourced participant, lobby only, once
 'solution:add'     { text }                       // preset host, lobby only
-'solution:edit'    { solutionId, text }           // host: preset rows + combined rows
+'solution:edit'    { solutionId, text }           // host: ANY row — preset lobby rows,
+                                                  // crowdsourced curation rows (originals
+                                                  // and combined alike; matches the mock)
 'solution:delete'  { solutionId }                 // host; hard delete
 'solution:combine' { solutionIds: string[], text?: string } → ack { solutionId }
                                                   // hard-deletes sources; text defaults to
@@ -70,7 +77,9 @@ type ErrorCode =
 | Event | Phase(s) | Who |
 |---|---|---|
 | `profile:set` | any (incl. outside sessions) | anyone |
-| `session:create` / `session:join` (code) | — / lobby, curation | anyone with profile |
+| `session:create` | — | anyone with profile |
+| `session:join` (code, new joiner) | lobby, curation | anyone with profile |
+| `session:join` (code, existing member) | any phase the code resolves (≠ results) | member |
 | `session:preview` | lobby, curation, voting | anyone with profile |
 | `session:join` (sessionId rejoin) | any | existing member |
 | `solution:submit` | lobby (crowdsourced) | participant¹, once |
@@ -94,12 +103,19 @@ type SessionState = {
   participants: { count: number; cap: number };
   isHost: boolean; hostParticipates: boolean;
   me: { submitted: boolean; voted: boolean };
-  submissions?: { submitted: number; total: number }; // crowdsourced lobby/curation; counts only
+  submissions?: { submitted: number; total: number }; // crowdsourced lobby/curation; counts
+                                                      // only. total = currently joined COUNTED
+                                                      // participants (a hostParticipates=false
+                                                      // host is excluded), NOT the cap
   deck?: { id: string; text: string; combined: boolean }[];   // NO authors, ever
-  votingProgress?: { voted: number; total: number };
+  votingProgress?: { voted: number; total: number };  // total = counted participants
+                                                      // (hostParticipates-aware)
   roster?: { displayName: string; voted: boolean }[];         // HOST ONLY, voting phase —
                                                               // who has finished; never scores
   results?: { ranked: { solutionId: string; text: string; avg: number }[] };
+                                                      // ranked by UNROUNDED mean; served avg
+                                                      // is an integer (round-half-up) — same
+                                                      // rule everywhere averages appear
 }
 ```
 
@@ -121,7 +137,9 @@ GET /api/sessions                 → ALL sessions of the authenticated host, li
                                     [{ id, problem, workflow, phase,
                                        joinCode?,                    // only while phase != results
                                        participants: number, cap, createdAt, closedAt? }]
-GET /api/sessions/:id/report      → { solutions: [{ id, text, avg, p25, p75 }],
+GET /api/sessions/:id/report      → requires phase = results — 409 for a live session
+                                    { session: { problem, workflow, participants, closedAt },
+                                      solutions: [{ id, text, avg, p25, p75 }],
                                       heatmap: { [dimension]: { [cohort]:
                                         { n: number,                 // cohort ballot count, always shown
                                           cells: { [solutionId]: number | 'suppressed' } } } } }
@@ -138,6 +156,18 @@ scores (integers). The consensus badge is client-derived from width `w = p75 −
 score values are suppressed.
 
 The `.csv` endpoint authenticates by bearer header like the rest — a plain `<a href>` can't
-send one, so clients download via authenticated fetch → blob.
+send one, so clients download via authenticated fetch → blob. Both report endpoints require
+`phase = results` (mock 02's "Open report" on a Live row is a mock error — history links reports
+for completed sessions only).
+
+## Demographic enums (provisional — swap when #25 resolves)
+
+Placeholder lists so nothing blocks on the client's answer; **one shared constant**, referenced
+by the profile form, server validation, and heatmap alike. Swapping values later is a one-file
+change and a migration, nothing more.
+
+- `department`: Product · Engineering · Sales · Marketing · Operations · Other
+- `role`: Individual Contributor · Team Lead · Manager · Director · Executive
+- `tenure`: <1 year · 1–2 years · 2–5 years · 5–10 years · 10+ years
 
 **Suppression scope:** demographic cohort cells with fewer than N (=3) ballots only. Whole-room aggregates — the ranked list, overall avg and spread — are always shown regardless of room size.
