@@ -9,6 +9,8 @@ import {
   DEPARTMENTS,
   PROBLEM_MAX_LENGTH,
   ROLES,
+  SCORE_MAX,
+  SCORE_MIN,
   SOLUTION_MAX_LENGTH,
   TENURES,
   type Ack,
@@ -30,6 +32,9 @@ class SeamError extends Error {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Counted participants: the submit/vote denominator — members minus a hostParticipates=false host.
+const countedTotal = (members: number, hostParticipates: boolean) => members - (hostParticipates ? 0 : 1);
+
 export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServer {
   const http = createServer();
   const io = new Server(http, { cors: { origin: '*' } });
@@ -48,7 +53,8 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     const { rows } = await pool.query(
       `select s.*,
               (select count(*)::int from memberships m where m.session_id = s.id) as member_count,
-              (select count(*)::int from memberships m where m.session_id = s.id and m.submitted) as submitted_count
+              (select count(*)::int from memberships m where m.session_id = s.id and m.submitted) as submitted_count,
+              (select count(*)::int from memberships m where m.session_id = s.id and m.voted) as voted_count
          from sessions s where s.id = $1`,
       [sessionId],
     );
@@ -78,17 +84,32 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     if (s.workflow === 'crowdsourced' && (s.phase === 'lobby' || s.phase === 'curation')) {
       state.submissions = {
         submitted: s.submitted_count,
-        total: s.member_count - (s.host_participates ? 0 : 1),
+        total: countedTotal(s.member_count, s.host_participates),
       };
     }
     if (isHost || s.phase === 'voting' || s.phase === 'results') {
       const deck = await pool.query(
-        'select id, text, combined from solutions where session_id = $1 order by created_at',
+        'select id, text, combined from solutions where session_id = $1 order by created_at, id',
         [sessionId],
       );
       state.deck = deck.rows;
     }
-    // ponytail: votingProgress/roster/results omitted — voting is unreachable until later tickets
+    if (s.phase === 'voting') {
+      state.votingProgress = { voted: s.voted_count, total: countedTotal(s.member_count, s.host_participates) };
+      if (isHost) {
+        // HOST ONLY: who has finished — names + voted flag, never scores (ADR-0002).
+        // The WHERE is countedTotal in SQL: a hostParticipates=false host is not listed.
+        const roster = await pool.query(
+          `select p.display_name as "displayName", m.voted
+             from memberships m join profiles p on p.id = m.user_id
+            where m.session_id = $1 and ($2 or m.user_id <> $3)
+            order by m.joined_at`,
+          [sessionId, s.host_participates, s.host_id],
+        );
+        state.roster = roster.rows;
+      }
+    }
+    // ponytail: results payload omitted — issue #7
     return state;
   }
 
@@ -159,8 +180,8 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     return raw;
   }
 
-  // Shared gate for solution:add/edit/delete/combine (one handler per the contract, not per workflow):
-  // host only, in the deck-editable phase — preset lobby or crowdsourced curation.
+  // Shared gate for solution:add/edit/delete/combine AND voting:start (whose legality window is
+  // exactly the deck-editable phases): host only, preset lobby or crowdsourced curation.
   // Runs fn in a tx holding the session row lock, so voting:start's freeze can't interleave.
   async function hostDeckEdit<T>(
     socket: Socket,
@@ -419,6 +440,100 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
         [sessionId],
       );
       if (!rowCount) throw new SeamError('bad-phase');
+      await broadcastState(sessionId);
+      return {};
+    });
+
+    handle(socket, 'voting:start', async () => {
+      // DECK IS IMMUTABLE FROM THIS MOMENT: hostDeckEdit's phase window is exactly
+      // voting:start's legality window, and once phase = voting every deck edit acks bad-phase.
+      await hostDeckEdit(socket, async (c, sessionId) => {
+        const { rows } = await c.query('select count(*)::int as n from solutions where session_id = $1', [sessionId]);
+        if (!rows[0].n) throw new SeamError('empty-deck');
+        await c.query(`update sessions set phase = 'voting' where id = $1`, [sessionId]);
+      });
+      return {};
+    });
+
+    handle(socket, 'ballot:submit', async (p) => {
+      const scores: unknown = p?.scores;
+      if (typeof scores !== 'object' || scores === null || Array.isArray(scores)) throw new SeamError('invalid-input');
+      const entries = Object.entries(scores);
+      if (entries.some(([, v]) => !Number.isInteger(v) || (v as number) < SCORE_MIN || (v as number) > SCORE_MAX)) {
+        throw new SeamError('invalid-input');
+      }
+      const sessionId = sessionOf(socket);
+      try {
+        await tx(async (c) => {
+          // Session row lock serialises concurrent ballots and voting:close, so the
+          // everyone-voted check below can't double-fire or race a phase flip.
+          const { rows } = await c.query(
+            'select host_id, host_participates, phase from sessions where id = $1 for update',
+            [sessionId],
+          );
+          const s = rows[0];
+          if (!s) throw new SeamError('not-found');
+          if (s.phase !== 'voting') throw new SeamError('bad-phase');
+          if (s.host_id === userId && !s.host_participates) throw new SeamError('not-participant');
+          const m = await c.query('select voted from memberships where session_id = $1 and user_id = $2', [
+            sessionId,
+            userId,
+          ]);
+          if (!m.rowCount) throw new SeamError('not-found');
+          if (m.rows[0].voted) throw new SeamError('duplicate-ballot');
+          // Atomic coverage check: scores must be the exact deck — no missing or stale solution.
+          const deck = await c.query('select id from solutions where session_id = $1', [sessionId]);
+          const deckIds = new Set<string>(deck.rows.map((r) => r.id));
+          if (entries.length !== deckIds.size || entries.some(([id]) => !deckIds.has(id))) {
+            throw new SeamError('incomplete-ballot');
+          }
+          // Demographic snapshot at submission: reports read the ballot's copy, so later
+          // profile edits never rewrite it (schema).
+          const ballot = await c.query(
+            `insert into ballots (session_id, user_id, department, role, tenure)
+             select $1, $2, department, role, tenure from profiles where id = $2 returning id`,
+            [sessionId, userId],
+          );
+          await c.query(
+            `insert into ballot_scores (ballot_id, solution_id, score)
+             select $1, unnest($2::uuid[]), unnest($3::int[])`,
+            [ballot.rows[0].id, entries.map(([id]) => id), entries.map(([, v]) => v)],
+          );
+          await c.query('update memberships set voted = true where session_id = $1 and user_id = $2', [
+            sessionId,
+            userId,
+          ]);
+          // Everyone-voted auto-complete over COUNTED participants; total = 0 never completes.
+          const counts = await c.query(
+            `select count(*)::int as members, count(*) filter (where voted)::int as voted
+               from memberships where session_id = $1`,
+            [sessionId],
+          );
+          const total = countedTotal(counts.rows[0].members, s.host_participates);
+          if (total > 0 && counts.rows[0].voted >= total) {
+            await c.query(`update sessions set phase = 'results', closed_at = now() where id = $1`, [sessionId]);
+          }
+        });
+      } catch (err: any) {
+        if (err?.code === '23505') throw new SeamError('duplicate-ballot'); // unique (session_id, user_id) race
+        throw err;
+      }
+      await broadcastState(sessionId);
+      return {};
+    });
+
+    handle(socket, 'voting:close', async () => {
+      const sessionId = sessionOf(socket);
+      await tx(async (c) => {
+        // Same lock as ballot:submit — a close can't interleave a mid-flight ballot.
+        const { rows } = await c.query('select host_id, phase from sessions where id = $1 for update', [sessionId]);
+        const s = rows[0];
+        if (!s) throw new SeamError('not-found');
+        if (s.host_id !== userId) throw new SeamError('not-host');
+        if (s.phase !== 'voting') throw new SeamError('bad-phase');
+        // Legal with ZERO ballots — the host's escape hatch (contract).
+        await c.query(`update sessions set phase = 'results', closed_at = now() where id = $1`, [sessionId]);
+      });
       await broadcastState(sessionId);
       return {};
     });
