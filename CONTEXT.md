@@ -50,6 +50,14 @@ _Avoid_: Merge, group, cluster
 
 ### Voting & results
 
+**Membership**:
+A user's seat in one session — who's in the room, whether they've submitted, whether they've voted.
+_Avoid_: Attendance, registration
+
+**Ballot**:
+One participant's complete set of confidence scores for the deck, submitted atomically, carrying a demographic snapshot taken at submission. Partial ballots never exist.
+_Avoid_: Vote set, submission
+
 **Confidence score**:
 A participant's 0–100 rating of one solution, cast via the swipe interface (or manual buttons). Every participant scores every solution in the deck.
 _Avoid_: Vote value, rating, points
