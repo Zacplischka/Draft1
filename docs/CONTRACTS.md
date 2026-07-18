@@ -125,7 +125,9 @@ type SessionState = {
   me: { submitted: boolean; voted: boolean;
         submissionText?: string };  // the member's OWN crowdsourced submission, echoed back
                                     // (mock 05's "Your submission is saved" panel; lost-device
-                                    // rejoin needs it server-side) — never anyone else's
+                                    // rejoin needs it server-side) — never anyone else's.
+                                    // Read from the membership's immutable snapshot, so it
+                                    // SURVIVES the host combining/deleting the deck row
   submissions?: { submitted: number; total: number }; // crowdsourced lobby/curation; counts
                                                       // only. total = currently joined COUNTED
                                                       // participants (a hostParticipates=false
@@ -169,6 +171,9 @@ Zero-ballot results/reports serve `avg`/`p25`/`p75` as `null` with deck order pr
 (clients render "—"); the heatmap has no cohorts and whole-room rows carry `n: 0`.
 
 ## HTTP (host-only; `Authorization: Bearer <token>`)
+
+Non-host requests (participants, strangers, unknown ids) get **404** across all three
+endpoints — one status, no existence leak (mirrors the socket seam's `not-found` rule).
 
 ```
 GET /api/sessions                 → ALL sessions of the authenticated host, live and completed:

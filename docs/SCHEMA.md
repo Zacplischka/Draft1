@@ -16,7 +16,7 @@ sessions
   problem       text
   workflow      enum ('crowdsourced' | 'preset')
   phase         enum ('lobby' | 'curation' | 'voting' | 'results')
-  cap           int  (default 8, ≤ 100)
+  cap           int  (default 8, CHECK 2–100)
   host_participates  bool
   join_code     char(6)            -- partial UNIQUE index WHERE phase != 'results'
   created_at / closed_at
@@ -24,6 +24,9 @@ sessions
 memberships
   session_id → sessions, user_id → profiles   (PK: both)
   submitted     bool
+  submission_text  text NULL      -- immutable snapshot of the member's own submission;
+                                  -- source of me.submissionText (survives curation
+                                  -- hard-deletes; solutions rows are the deck's working copy)
   voted         bool
   joined_at
 
@@ -31,6 +34,9 @@ solutions
   id            uuid PK
   session_id  → sessions
   text          text
+  combined      bool default false -- feeds deck[].combined (NOT derivable from
+                                   -- submitted_by NULL — host-added rows are NULL too)
+  created_at    timestamptz        -- deck order = insertion order, stable (contract)
   submitted_by  uuid → profiles, NULL for combined rows AND all preset-workflow rows
                 UNIQUE (session_id, submitted_by)  -- one-per-participant; bites only
                                                    -- crowdsourced originals (NULLs exempt)
