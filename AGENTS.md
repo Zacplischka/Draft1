@@ -1,6 +1,6 @@
 # Draft1 (group-decision)
 
-Express + Socket.IO app. `npm start` runs `server.js`; `npm run dev` for nodemon.
+Group-decision voting app, pre-implementation: the tree is docs-only (the old prototype lives in git history). The build is fully specified and ticketed — start from `docs/SPEC.md` (spec, canonical copy issue #1), `docs/CONTRACTS.md` (the room-engine seam every ticket implements against), `docs/SCHEMA.md`, and the mocks in `docs/images/`. Stack: TypeScript, Node/Socket.IO room engine + Supabase (Google OAuth, Postgres), React + Vite + Tailwind SPA.
 
 ## Agent skills
 

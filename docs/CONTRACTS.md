@@ -26,7 +26,8 @@ type ErrorCode =
   | 'incomplete-ballot'  // scores don't cover the exact current deck
   | 'empty-deck'         // voting:start with no solutions
   | 'invalid-input';     // malformed payload (bad enum, score out of 0–100,
-                         //   empty or >300-char solution text, cap outside 2–100)
+                         //   empty or >300-char solution text, cap outside 2–100,
+                         //   empty or >500-char problem statement)
 ```
 
 ## Client → Server
@@ -133,9 +134,11 @@ type SessionState = {
                                                               // hostParticipates=false host is
                                                               // not listed)
   results?: { ranked: { solutionId: string; text: string; avg: number }[] };
-                                                      // ranked by UNROUNDED mean; served avg
-                                                      // is an integer (round-half-up) — same
-                                                      // rule everywhere averages appear
+                                                      // ranked by UNROUNDED mean, ties broken
+                                                      // by solutionId ascending — one rule for
+                                                      // socket results, report, and CSV alike;
+                                                      // served avg is an integer (round-half-
+                                                      // up) — same everywhere averages appear
 }
 ```
 
@@ -175,9 +178,11 @@ GET /api/sessions/:id/report      → requires phase = results — 409 for a liv
 GET /api/sessions/:id/report.csv  → fixed header: solution_text, dimension, cohort,
                                       n_voters, avg, p25, p75
                                     one row per (solution × dimension × cohort), rows in
-                                    ranked order; avg = number or SUPPRESSED; p25/p75 filled
-                                    on whole-room rows (dimension = 'all') and empty on
-                                    cohort rows; n_voters always filled
+                                    ranked order; avg = number or the literal SUPPRESSED;
+                                    p25/p75 filled on whole-room rows (dimension = 'all',
+                                    cohort = 'all') and empty on cohort rows; n_voters always
+                                    filled; zero-ballot cells are empty strings (the "—" is
+                                    a UI rendering, never in the file)
 ```
 
 **Spread = middle-50% range.** `p25`/`p75` are nearest-rank percentiles of that solution's ballot
