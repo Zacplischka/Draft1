@@ -10,6 +10,8 @@ import { CreateSession } from './CreateSession';
 import { JoinSession } from './JoinSession';
 import { Lobby } from './Lobby';
 import { CrowdsourcedParticipant } from './CrowdsourcedParticipant';
+import { HostLobby } from './HostLobby';
+import { PresetParticipant } from './PresetParticipant';
 
 type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
 
@@ -166,7 +168,16 @@ export default function App() {
   if (route === 'session') {
     // Only this session's snapshots — a stale broadcast from an earlier room must not render.
     const s = sessionState?.sessionId === sessionId ? sessionState : null;
-    // Crowdsourced participant submit/waiting (#15); host + later phases stay on the placeholder.
+    // Host lobbies (#16); crowdsourced participant submit/waiting (#15); preset participant
+    // waiting (#16). Curation (host) + later phases stay on the placeholder.
+    if (s && s.isHost && s.phase === 'lobby') {
+      return (
+        <HostLobby
+          state={s}
+          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+        />
+      );
+    }
     if (s && !s.isHost && s.workflow === 'crowdsourced' && (s.phase === 'lobby' || s.phase === 'curation')) {
       return (
         <CrowdsourcedParticipant
@@ -174,6 +185,9 @@ export default function App() {
           emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
         />
       );
+    }
+    if (s && !s.isHost && s.workflow === 'preset' && s.phase === 'lobby') {
+      return <PresetParticipant state={s} />;
     }
     return (
       <Lobby
