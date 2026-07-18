@@ -159,15 +159,15 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     return raw;
   }
 
-  // Shared gate for solution:add/edit/delete (one handler per the contract, not per workflow):
+  // Shared gate for solution:add/edit/delete/combine (one handler per the contract, not per workflow):
   // host only, in the deck-editable phase — preset lobby or crowdsourced curation.
   // Runs fn in a tx holding the session row lock, so voting:start's freeze can't interleave.
-  async function hostDeckEdit(
+  async function hostDeckEdit<T>(
     socket: Socket,
-    fn: (c: PoolClient, sessionId: string) => Promise<void>,
-  ): Promise<void> {
+    fn: (c: PoolClient, sessionId: string) => Promise<T>,
+  ): Promise<T> {
     const sessionId = sessionOf(socket);
-    await tx(async (c) => {
+    const result = await tx(async (c) => {
       const { rows } = await c.query('select host_id, workflow, phase from sessions where id = $1 for update', [
         sessionId,
       ]);
@@ -177,9 +177,10 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
       const editable =
         (s.workflow === 'preset' && s.phase === 'lobby') || (s.workflow === 'crowdsourced' && s.phase === 'curation');
       if (!editable) throw new SeamError('bad-phase');
-      await fn(c, sessionId);
+      return fn(c, sessionId);
     });
     await broadcastState(sessionId);
+    return result;
   }
 
   // The one query behind preview and code-join: active (phase != results) session by join code.
@@ -377,6 +378,31 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
         if (!rowCount) throw new SeamError('not-found');
       });
       return {};
+    });
+
+    handle(socket, 'solution:combine', async (p) => {
+      const raw: unknown = p?.solutionIds;
+      if (!Array.isArray(raw) || raw.some((id) => typeof id !== 'string')) throw new SeamError('invalid-input');
+      const ids = [...new Set(raw as string[])];
+      if (ids.length < 2) throw new SeamError('invalid-input'); // combining needs 2+ distinct sources
+      // text optional: the host edits the merged wording in the modal; absent → " / " join below.
+      const text = p?.text === undefined ? undefined : solutionText(p.text);
+      if (ids.some((id) => !UUID_RE.test(id))) throw new SeamError('not-found');
+      const solutionId = await hostDeckEdit(socket, async (c, sessionId) => {
+        const sources = await c.query(
+          'select text from solutions where session_id = $1 and id = any($2) order by created_at',
+          [sessionId, ids],
+        );
+        if (sources.rowCount !== ids.length) throw new SeamError('not-found'); // tx rolls back — nothing deleted
+        await c.query('delete from solutions where session_id = $1 and id = any($2)', [sessionId, ids]);
+        // One new row: combined = true, submitted_by NULL (schema's hard-delete rule).
+        const { rows } = await c.query(
+          'insert into solutions (session_id, text, combined) values ($1, $2, true) returning id',
+          [sessionId, text ?? sources.rows.map((r) => r.text).join(' / ')],
+        );
+        return rows[0].id as string;
+      });
+      return { solutionId };
     });
 
     handle(socket, 'curation:start', async () => {
