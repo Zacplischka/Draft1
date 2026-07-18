@@ -13,6 +13,7 @@ import { CrowdsourcedParticipant } from './CrowdsourcedParticipant';
 import { HostLobby } from './HostLobby';
 import { PresetParticipant } from './PresetParticipant';
 import { Voting } from './Voting';
+import { Curation } from './Curation';
 
 type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
 
@@ -169,8 +170,16 @@ export default function App() {
   if (route === 'session') {
     // Only this session's snapshots — a stale broadcast from an earlier room must not render.
     const s = sessionState?.sessionId === sessionId ? sessionState : null;
-    // Host lobbies (#16); crowdsourced participant submit/waiting (#15); preset participant
-    // waiting (#16). Curation (host) + later phases stay on the placeholder.
+    // Host lobbies (#16); curation (#17); crowdsourced participant submit/waiting (#15);
+    // preset participant waiting (#16). Later phases stay on the placeholder.
+    if (s && s.isHost && s.phase === 'curation') {
+      return (
+        <Curation
+          state={s}
+          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+        />
+      );
+    }
     if (s && s.isHost && s.phase === 'lobby') {
       return (
         <HostLobby

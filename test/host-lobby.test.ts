@@ -6,6 +6,8 @@ import { submitSolution } from '../src/client/submit-solution';
 import {
   addSolution,
   beginCuration,
+  combineSolutions,
+  defaultCombinedText,
   deleteSolution,
   editSolution,
   hostSteps,
@@ -83,6 +85,20 @@ describe('host lobby logic', () => {
     await beginCuration(zero.host.emit);
     const z = await zero.host.stateWhere((x) => x.sessionId === zero.sessionId && x.phase === 'curation');
     expect(z.phase).toBe('curation');
+  });
+
+  it('combineSolutions: default " / " join lands as one combined row; edited text used verbatim', async () => {
+    expect(defaultCombinedText(['A', 'B'])).toBe('A / B');
+    const { host, sessionId, joinCode } = await room('crowdsourced', [], false);
+    const participant = await h.connect(await h.mintIdentity());
+    await joinSession(participant.emit, joinCode);
+    await submitSolution(participant.emit, 'Improve onboarding');
+    await beginCuration(host.emit);
+    await addSolution(host.emit, 'Add guided setup');
+    let s = await host.stateWhere((x) => x.sessionId === sessionId && x.deck?.length === 2);
+    await combineSolutions(host.emit, s.deck!.map((d) => d.id), 'Improve onboarding / Add guided setup');
+    s = await host.stateWhere((x) => x.sessionId === sessionId && x.deck?.length === 1);
+    expect(s.deck![0]).toMatchObject({ text: 'Improve onboarding / Add guided setup', combined: true });
   });
 
   it('a participating host submits like anyone else and is counted', async () => {
