@@ -36,6 +36,11 @@ type ErrorCode =
                                                   // when decided). Upsert — callable
                                                   // any time; the NEXT ballot snapshots
                                                   // the new values (past reports unchanged)
+'profile:get'      {} → ack { displayName,
+                              profile: { department, role, tenure } | null }
+                                                  // EXEMPT from the profile-required gate —
+                                                  // it's how the client detects first-time
+                                                  // users and prefills Edit profile
 'session:create'   { problem, workflow: 'crowdsourced' | 'preset',
                      cap?: number,                // default 8, min 2, max 100
                      hostParticipates: boolean }
@@ -81,7 +86,7 @@ type ErrorCode =
 
 | Event | Phase(s) | Who |
 |---|---|---|
-| `profile:set` | any (incl. outside sessions) | anyone |
+| `profile:set` / `profile:get` | any (incl. outside sessions) | anyone |
 | `session:create` | — | anyone with profile |
 | `session:join` (code, new joiner) | lobby, curation | anyone with profile |
 | `session:join` (code, existing member) | any phase the code resolves (≠ results) | member |
@@ -102,7 +107,9 @@ type ErrorCode =
 'session:state'    SessionState
 
 type SessionState = {
-  sessionId: string; joinCode: string; problem: string;
+  sessionId: string;
+  joinCode?: string;   // absent at results — the code recycles; never render it there
+  problem: string;
   workflow: 'crowdsourced' | 'preset';
   phase: 'lobby' | 'curation' | 'voting' | 'results';
   participants: { count: number; cap: number };
@@ -149,6 +156,8 @@ GET /api/sessions                 → ALL sessions of the authenticated host, li
                                        participants: number, cap, createdAt, closedAt? }]
 GET /api/sessions/:id/report      → requires phase = results — 409 for a live session
                                     { session: { problem, workflow, participants, closedAt },
+                                      // participants = MEMBER count (exceeds ballot count
+                                      // after an early close)
                                       solutions: [{ id, text, avg, p25, p75 }],
                                       heatmap: { [dimension]: { [cohort]:
                                         { n: number,                 // cohort ballot count, always shown
