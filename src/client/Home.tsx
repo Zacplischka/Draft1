@@ -1,13 +1,15 @@
 import type { MouseEvent } from 'react';
 
 /** Minimal signed-in home: account menu + the two entry points.
- *  #13 (create) and #14 (join) wire the buttons; #22 replaces this with the dashboard. */
+ *  #14 wires Join; #22 replaces this with the dashboard. */
 export function Home({
   displayName,
+  onCreate,
   onEditProfile,
   onSignOut,
 }: {
   displayName: string;
+  onCreate: () => void;
   onEditProfile: () => void;
   onSignOut: () => void;
 }) {
@@ -48,7 +50,10 @@ export function Home({
           What are we deciding today?
         </h1>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          <button className="rounded-xl bg-indigo-600 px-6 py-4 font-medium text-white hover:bg-indigo-700">
+          <button
+            onClick={onCreate}
+            className="rounded-xl bg-indigo-600 px-6 py-4 font-medium text-white hover:bg-indigo-700"
+          >
             Create session
           </button>
           <button className="rounded-xl border border-indigo-600 bg-white px-6 py-4 font-medium text-indigo-600 hover:bg-indigo-50">

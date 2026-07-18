@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
-import type { Ack, Profile } from '../shared/contract';
+import type { Ack, Profile, SessionState } from '../shared/contract';
 import { getToken, signOut } from './auth';
 import { connectSocket } from './socket';
 import { SignIn } from './SignIn';
 import { ProfileForm } from './ProfileForm';
 import { Home } from './Home';
+import { CreateSession } from './CreateSession';
+import { Lobby } from './Lobby';
 
-type Route = 'loading' | 'signed-out' | 'first-profile' | 'home';
+type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'session';
 
 export default function App() {
   const [route, setRoute] = useState<Route>('loading');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [editing, setEditing] = useState(false);
@@ -43,6 +47,9 @@ export default function App() {
         void signOut().then(() => {
           if (!disposed) setRoute('signed-out');
         });
+      });
+      socket.on('session:state', (s: SessionState) => {
+        if (!disposed) setSessionState(s);
       });
       socket.on('connect', () => {
         unauthorized = 0;
@@ -126,10 +133,36 @@ export default function App() {
       </div>
     );
   }
+  if (route === 'create') {
+    return (
+      <CreateSession
+        socket={socketRef.current!}
+        onBack={() => setRoute('home')}
+        onCreated={(id) => {
+          setSessionId(id);
+          setRoute('session');
+        }}
+        onProfileRequired={() => setRoute('first-profile')}
+      />
+    );
+  }
+  if (route === 'session') {
+    // Only this session's snapshots — a stale broadcast from an earlier room must not render.
+    return (
+      <Lobby
+        state={sessionState?.sessionId === sessionId ? sessionState : null}
+        onBack={() => {
+          setSessionState(null);
+          setRoute('home');
+        }}
+      />
+    );
+  }
   return (
     <>
       <Home
         displayName={displayName}
+        onCreate={() => setRoute('create')}
         onEditProfile={() => {
           setSaveError(null);
           setEditing(true);
