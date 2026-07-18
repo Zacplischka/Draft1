@@ -7,9 +7,10 @@ import { SignIn } from './SignIn';
 import { ProfileForm } from './ProfileForm';
 import { Home } from './Home';
 import { CreateSession } from './CreateSession';
+import { JoinSession } from './JoinSession';
 import { Lobby } from './Lobby';
 
-type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'session';
+type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
 
 export default function App() {
   const [route, setRoute] = useState<Route>('loading');
@@ -146,6 +147,21 @@ export default function App() {
       />
     );
   }
+  if (route === 'join') {
+    return (
+      <JoinSession
+        socket={socketRef.current!}
+        displayName={displayName}
+        onBack={() => setRoute('home')}
+        onJoined={(id) => {
+          setSessionId(id);
+          setRoute('session');
+        }}
+        onSwitchAccount={() => void handleSignOut()}
+        onProfileRequired={() => setRoute('first-profile')}
+      />
+    );
+  }
   if (route === 'session') {
     // Only this session's snapshots — a stale broadcast from an earlier room must not render.
     return (
@@ -163,6 +179,7 @@ export default function App() {
       <Home
         displayName={displayName}
         onCreate={() => setRoute('create')}
+        onJoin={() => setRoute('join')}
         onEditProfile={() => {
           setSaveError(null);
           setEditing(true);

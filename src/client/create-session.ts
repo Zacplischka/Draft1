@@ -20,7 +20,7 @@ export function validateDetails(problem: string, cap: number): { problem?: strin
   return errors;
 }
 
-type Emit = (event: string, payload: unknown) => Promise<Ack<any>>;
+export type Emit = (event: string, payload: unknown) => Promise<Ack<any>>;
 
 /** The contract orchestration: session:create, then one solution:add per preset row. */
 export async function createSession(
