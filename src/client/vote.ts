@@ -32,7 +32,7 @@ export function pruneScores(deck: Deck, scores: Scores): Scores {
   return Object.fromEntries(Object.entries(scores).filter(([id]) => ids.has(id)));
 }
 
-// Device-local per-card scores — a mid-deck refresh resumes at the next unscored card
+// Device-local per-Solution scores — a mid-deck refresh resumes at the next unscored Solution
 // (server holds no partial state; contract).
 const storageKey = (sessionId: string) => `ballot-${sessionId}`;
 
@@ -60,7 +60,7 @@ export function clearScores(sessionId: string): void {
 
 /** One atomic ballot for the exact deck. ok / duplicate-ballot → 'submitted' (counted);
  *  bad-phase (raced voting:close) → 'ended' — route to results, never an error;
- *  incomplete-ballot → 'incomplete' so the UI resumes at the missing card. Others throw. */
+ *  incomplete-ballot → 'incomplete' so the UI resumes at the missing Solution. Others throw. */
 export async function submitBallot(emit: Emit, scores: Scores): Promise<'submitted' | 'ended' | 'incomplete'> {
   const ack = (await emit('ballot:submit', { scores })) as Ack;
   if ('ok' in ack || ack.error === 'duplicate-ballot') return 'submitted';

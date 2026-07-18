@@ -64,7 +64,7 @@ describe('deck progress from device-local scores', () => {
     { id: 'c', text: 'C', combined: false },
   ];
 
-  it('nextUnscored resumes at the first unscored card, deck.length when done', () => {
+  it('nextUnscored resumes at the first unscored Solution, deck.length when done', () => {
     expect(nextUnscored(deck, {})).toBe(0);
     expect(nextUnscored(deck, { a: 80 })).toBe(1);
     expect(nextUnscored(deck, { a: 80, c: 10 })).toBe(1); // b still missing
@@ -96,7 +96,7 @@ describe('submitBallot: one atomic emit, race acks routed not errored', () => {
     expect(await submitBallot(participant.emit, fullBallot(deck))).toBe('ended');
   });
 
-  it('incomplete-ballot → incomplete so the client resumes at the missing card', async () => {
+  it('incomplete-ballot → incomplete so the client resumes at the missing Solution', async () => {
     const { participant, deck } = await votingRoom();
     expect(await submitBallot(participant.emit, { [deck[0]!.id]: 50 })).toBe('incomplete');
   });

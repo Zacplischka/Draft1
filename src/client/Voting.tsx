@@ -15,15 +15,18 @@ import {
 
 const clamp = (n: number) => Math.min(SCORE_MAX, Math.max(SCORE_MIN, n));
 
+/** Inverse of vote.ts's angleToScore: ring angle for a score (π at 0-anchor, 0 at 100). */
+const thetaOf = (score: number) => Math.PI * (1 - score / SCORE_MAX);
+
 /** SVG arc along the ring from the 0-anchor (left) to the current score's angle. */
 function arcPath(score: number, c: number, r: number): string {
-  const theta = Math.PI * (1 - score / SCORE_MAX);
+  const theta = thetaOf(score);
   const x = c + r * Math.cos(theta);
   const y = c - r * Math.sin(theta);
   return `M ${c - r} ${c} A ${r} ${r} 0 0 1 ${x} ${y}`;
 }
 
-function SolutionCard({ text, dimmed }: { text: string; dimmed?: boolean }) {
+function SolutionTile({ text, dimmed }: { text: string; dimmed?: boolean }) {
   return (
     <div
       className={`w-44 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-md ${dimmed ? 'opacity-50' : ''}`}
@@ -41,15 +44,15 @@ function SwipeRing({ text, onCast }: { text: string; onCast: (score: number) => 
   const box = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ score: number; past: boolean } | null>(null);
 
-  function measure(e: React.PointerEvent) {
+  function trackPointer(e: React.PointerEvent) {
     const r = box.current!.getBoundingClientRect();
     const dx = e.clientX - (r.left + r.width / 2);
     const dy = e.clientY - (r.top + r.height / 2);
     setDrag({ score: angleToScore(dx, dy), past: Math.hypot(dx, dy) > r.width * 0.45 });
   }
 
-  const theta = drag ? Math.PI * (1 - drag.score / SCORE_MAX) : 0;
-  const colour = drag ? scoreColor(drag.score) : '';
+  const theta = drag ? thetaOf(drag.score) : 0;
+  const color = drag ? scoreColor(drag.score) : '';
   return (
     <>
       <div className="relative mx-auto mt-10 w-72 max-w-full">
@@ -72,9 +75,9 @@ function SwipeRing({ text, onCast }: { text: string; onCast: (score: number) => 
           className="relative aspect-square w-full touch-none select-none"
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
-            measure(e);
+            trackPointer(e);
           }}
-          onPointerMove={(e) => drag && measure(e)}
+          onPointerMove={(e) => drag && trackPointer(e)}
           onPointerUp={() => {
             if (drag?.past) onCast(drag.score);
             setDrag(null);
@@ -85,8 +88,8 @@ function SwipeRing({ text, onCast }: { text: string; onCast: (score: number) => 
             <circle cx="150" cy="150" r="135" fill="none" stroke="#e2e8f0" strokeWidth="5" />
             {drag && (
               <>
-                <path d={arcPath(drag.score, 150, 135)} fill="none" stroke={colour} strokeWidth="6" strokeLinecap="round" />
-                <circle cx={150 + 135 * Math.cos(theta)} cy={150 - 135 * Math.sin(theta)} r="8" fill={colour} />
+                <path d={arcPath(drag.score, 150, 135)} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" />
+                <circle cx={150 + 135 * Math.cos(theta)} cy={150 - 135 * Math.sin(theta)} r="8" fill={color} />
               </>
             )}
           </svg>
@@ -97,14 +100,14 @@ function SwipeRing({ text, onCast }: { text: string; onCast: (score: number) => 
               style={{
                 left: `${50 + 53 * Math.cos(theta)}%`,
                 top: `${50 - 53 * Math.sin(theta)}%`,
-                color: colour,
+                color: color,
               }}
             >
               {drag.score}
             </div>
           )}
           <div className="absolute inset-0 flex items-center justify-center">
-            <SolutionCard text={text} dimmed={!!drag} />
+            <SolutionTile text={text} dimmed={!!drag} />
           </div>
         </div>
       </div>
@@ -113,7 +116,7 @@ function SwipeRing({ text, onCast }: { text: string; onCast: (score: number) => 
         {drag && (
           <span
             className="inline-block rounded-full px-3 py-1 text-sm font-medium text-white"
-            style={{ backgroundColor: colour }}
+            style={{ backgroundColor: color }}
           >
             Confidence {drag.score}
           </span>
@@ -132,7 +135,7 @@ function ManualScore({ text, onCast, onBack }: { text: string; onCast: (score: n
   return (
     <div className="mx-auto mt-10 max-w-xs text-center">
       <div className="flex justify-center">
-        <SolutionCard text={text} />
+        <SolutionTile text={text} />
       </div>
       <div className="mt-8 font-medium text-slate-900">Set your Confidence score</div>
       <div className="mt-3 flex items-center justify-center gap-6">
@@ -232,15 +235,18 @@ function AdjustSheet({
 
 export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
   const deck = state.deck ?? [];
-  const [scores, setScores] = useState<Scores>(() => pruneScores(deck, loadScores(state.sessionId)));
-  const [resumed] = useState(() => {
-    const i = nextUnscored(deck, pruneScores(deck, loadScores(state.sessionId)));
-    return i > 0 && i < deck.length;
+  // One read of the device-local scores seeds both the score map and the resumed banner.
+  const [initial] = useState(() => {
+    const saved = pruneScores(deck, loadScores(state.sessionId));
+    const i = nextUnscored(deck, saved);
+    return { saved, resumed: i > 0 && i < deck.length };
   });
+  const [scores, setScores] = useState<Scores>(initial.saved);
+  const resumed = initial.resumed;
   const [mode, setMode] = useState<'swipe' | 'manual'>('swipe');
   const [editBeforeSubmit, setEditBeforeSubmit] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
-  const [ballot, setBallot] = useState<'idle' | 'busy' | 'submitted' | 'error'>('idle');
+  const [ballot, setBallot] = useState<'idle' | 'busy' | 'submitted' | 'ended' | 'error'>('idle');
   const inFlight = useRef(false);
 
   const index = nextUnscored(deck, scores);
@@ -254,15 +260,15 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
     try {
       const r = await submitBallot(emit, all);
       if (r === 'incomplete') {
-        // Stale device scores didn't cover the deck — resume at the missing card.
+        // Stale device scores didn't cover the deck — resume at the missing Solution.
         const pruned = pruneScores(deck, all);
         saveScores(state.sessionId, pruned);
         setScores(pruned);
         setBallot('idle');
       } else {
-        // 'ended' (raced voting:close) lands here too — the results snapshot routes away.
+        // 'ended' = raced voting:close — voting is over, the results snapshot routes away.
         clearScores(state.sessionId);
-        setBallot('submitted');
+        setBallot(r);
       }
     } catch {
       setBallot('error');
@@ -271,7 +277,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
     }
   }
 
-  // A refresh after the last card but before the ack still submits (device-local resume).
+  // A refresh after the last Solution but before the ack still submits (device-local resume).
   useEffect(() => {
     if (done && !voted && ballot === 'idle') void finish(scores);
   }, [done]);
@@ -289,7 +295,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
     if (nextUnscored(deck, next) === deck.length) void finish(next);
   }
 
-  const card = deck[index];
+  const solution = deck[index];
   return (
     <div className="flex min-h-screen flex-col bg-slate-100">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
@@ -309,11 +315,12 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           />
         </div>
 
-        <details className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        {/* Collapsed = one truncated line; open = full problem statement. */}
+        <details className="group mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <summary className="flex cursor-pointer list-none items-center gap-2 text-slate-700">
             <span aria-hidden>❓</span>
-            <span className="flex-1">{state.problem}</span>
-            <span aria-hidden className="text-slate-400">
+            <span className="min-w-0 flex-1 truncate group-open:whitespace-normal">{state.problem}</span>
+            <span aria-hidden className="text-slate-400 transition-transform group-open:rotate-180">
               ⌄
             </span>
           </summary>
@@ -325,7 +332,13 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           </p>
         )}
 
-        {voted || ballot === 'busy' ? (
+        {ballot === 'ended' ? (
+          // Raced voting:close — no ballot was counted; the results snapshot routes away.
+          <div className="mt-16 text-center">
+            <h1 className="text-2xl font-semibold text-slate-900">Voting has ended</h1>
+            <p className="mt-2 text-slate-500">Taking you to the results…</p>
+          </div>
+        ) : voted || ballot === 'busy' ? (
           <div className="mt-16 text-center">
             <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
               ✓
@@ -349,11 +362,11 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
               Try again
             </button>
           </div>
-        ) : card ? (
+        ) : solution ? (
           <>
             {mode === 'swipe' ? (
               <>
-                <SwipeRing key={card.id} text={card.text} onCast={cast} />
+                <SwipeRing key={solution.id} text={solution.text} onCast={cast} />
                 <div className="mt-8 text-center">
                   <button
                     onClick={() => setMode('manual')}
@@ -364,20 +377,23 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
                 </div>
               </>
             ) : (
-              <ManualScore key={card.id} text={card.text} onCast={cast} onBack={() => setMode('swipe')} />
+              <ManualScore key={solution.id} text={solution.text} onCast={cast} onBack={() => setMode('swipe')} />
             )}
             {pending !== null && (
               <AdjustSheet
                 score={pending}
                 onChange={setPending}
                 onSubmit={() => commit(pending)}
-                onReswipe={() => setPending(null)}
+                onReswipe={() => {
+                  setPending(null);
+                  setMode('swipe'); // the button says Re-swipe — leave manual mode too
+                }}
               />
             )}
           </>
         ) : null}
       </main>
-      {!voted && ballot !== 'busy' && (
+      {!voted && ballot !== 'busy' && ballot !== 'ended' && (
         <footer className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white">
           <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
             <span className="text-slate-700">Edit before submit</span>
