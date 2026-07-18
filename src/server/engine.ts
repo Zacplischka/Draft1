@@ -152,6 +152,36 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     return socket.data.sessionId;
   }
 
+  function solutionText(raw: unknown): string {
+    if (typeof raw !== 'string' || raw.trim().length === 0 || raw.length > SOLUTION_MAX_LENGTH) {
+      throw new SeamError('invalid-input');
+    }
+    return raw;
+  }
+
+  // Shared gate for solution:add/edit/delete (one handler per the contract, not per workflow):
+  // host only, in the deck-editable phase — preset lobby or crowdsourced curation.
+  // Runs fn in a tx holding the session row lock, so voting:start's freeze can't interleave.
+  async function hostDeckEdit(
+    socket: Socket,
+    fn: (c: PoolClient, sessionId: string) => Promise<void>,
+  ): Promise<void> {
+    const sessionId = sessionOf(socket);
+    await tx(async (c) => {
+      const { rows } = await c.query('select host_id, workflow, phase from sessions where id = $1 for update', [
+        sessionId,
+      ]);
+      const s = rows[0];
+      if (!s) throw new SeamError('not-found');
+      if (s.host_id !== socket.data.userId) throw new SeamError('not-host');
+      const editable =
+        (s.workflow === 'preset' && s.phase === 'lobby') || (s.workflow === 'crowdsourced' && s.phase === 'curation');
+      if (!editable) throw new SeamError('bad-phase');
+      await fn(c, sessionId);
+    });
+    await broadcastState(sessionId);
+  }
+
   // The one query behind preview and code-join: active (phase != results) session by join code.
   async function activeSessionByCode(joinCode: string, userId: string) {
     const { rows } = await pool.query(
@@ -272,10 +302,7 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
     });
 
     handle(socket, 'solution:submit', async (p) => {
-      const text = p?.text;
-      if (typeof text !== 'string' || text.trim().length === 0 || text.length > SOLUTION_MAX_LENGTH) {
-        throw new SeamError('invalid-input');
-      }
+      const text = solutionText(p?.text);
       const sessionId = sessionOf(socket);
       try {
         await tx(async (c) => {
@@ -312,6 +339,43 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
         throw err;
       }
       await broadcastState(sessionId);
+      return {};
+    });
+
+    handle(socket, 'solution:add', async (p) => {
+      const text = solutionText(p?.text);
+      // submitted_by stays NULL (host-authored row) — the one-per-participant unique index never bites.
+      await hostDeckEdit(socket, async (c, sessionId) => {
+        await c.query('insert into solutions (session_id, text) values ($1, $2)', [sessionId, text]);
+      });
+      return {};
+    });
+
+    handle(socket, 'solution:edit', async (p) => {
+      const text = solutionText(p?.text);
+      if (typeof p?.solutionId !== 'string' || !UUID_RE.test(p.solutionId)) throw new SeamError('not-found');
+      await hostDeckEdit(socket, async (c, sessionId) => {
+        // session_id in the WHERE: another session's solution id acks not-found, no cross-room edits.
+        const { rowCount } = await c.query('update solutions set text = $3 where id = $1 and session_id = $2', [
+          p.solutionId,
+          sessionId,
+          text,
+        ]);
+        if (!rowCount) throw new SeamError('not-found');
+      });
+      return {};
+    });
+
+    handle(socket, 'solution:delete', async (p) => {
+      if (typeof p?.solutionId !== 'string' || !UUID_RE.test(p.solutionId)) throw new SeamError('not-found');
+      // Hard delete — the table IS the deck (schema).
+      await hostDeckEdit(socket, async (c, sessionId) => {
+        const { rowCount } = await c.query('delete from solutions where id = $1 and session_id = $2', [
+          p.solutionId,
+          sessionId,
+        ]);
+        if (!rowCount) throw new SeamError('not-found');
+      });
       return {};
     });
 
