@@ -5,11 +5,13 @@ import type { MouseEvent } from 'react';
 export function Home({
   displayName,
   onCreate,
+  onJoin,
   onEditProfile,
   onSignOut,
 }: {
   displayName: string;
   onCreate: () => void;
+  onJoin: () => void;
   onEditProfile: () => void;
   onSignOut: () => void;
 }) {
@@ -56,7 +58,10 @@ export function Home({
           >
             Create session
           </button>
-          <button className="rounded-xl border border-indigo-600 bg-white px-6 py-4 font-medium text-indigo-600 hover:bg-indigo-50">
+          <button
+            onClick={onJoin}
+            className="rounded-xl border border-indigo-600 bg-white px-6 py-4 font-medium text-indigo-600 hover:bg-indigo-50"
+          >
             Join session
           </button>
         </div>
