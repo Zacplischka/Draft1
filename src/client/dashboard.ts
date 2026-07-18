@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Phase, SessionSummary, Workflow } from '../shared/contract';
-import { getToken } from './auth';
+import { authedFetch } from './auth';
 
 // live = anything the join code still resolves; completed = results (report available).
 export const isLive = (s: SessionSummary) => s.phase !== 'results';
@@ -69,11 +69,7 @@ export const formatTime = (iso: string): string =>
 
 /** GET /api/sessions — bearer-authenticated, like the report endpoints (docs/CONTRACTS.md). */
 export async function fetchSessions(): Promise<SessionSummary[]> {
-  const token = await getToken();
-  if (!token) throw new Error('signed out');
-  const res = await fetch('/api/sessions', { headers: { authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error(String(res.status));
-  return (await res.json()) as SessionSummary[];
+  return (await (await authedFetch('/api/sessions')).json()) as SessionSummary[];
 }
 
 /** Dashboard data: fetched on mount, on window focus, and every 30s — the dashboard
