@@ -9,6 +9,7 @@ import { Home } from './Home';
 import { CreateSession } from './CreateSession';
 import { JoinSession } from './JoinSession';
 import { Lobby } from './Lobby';
+import { CrowdsourcedParticipant } from './CrowdsourcedParticipant';
 
 type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session';
 
@@ -164,9 +165,19 @@ export default function App() {
   }
   if (route === 'session') {
     // Only this session's snapshots — a stale broadcast from an earlier room must not render.
+    const s = sessionState?.sessionId === sessionId ? sessionState : null;
+    // Crowdsourced participant submit/waiting (#15); host + later phases stay on the placeholder.
+    if (s && !s.isHost && s.workflow === 'crowdsourced' && (s.phase === 'lobby' || s.phase === 'curation')) {
+      return (
+        <CrowdsourcedParticipant
+          state={s}
+          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+        />
+      );
+    }
     return (
       <Lobby
-        state={sessionState?.sessionId === sessionId ? sessionState : null}
+        state={s}
         onBack={() => {
           setSessionState(null);
           setRoute('home');
