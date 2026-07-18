@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { createRoomServer, type VerifyToken } from './server/engine';
 import { migrate } from './server/db';
+import { serveSpa } from './server/static';
 
 async function main(): Promise<void> {
   const { DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PORT = '3001' } = process.env;
@@ -23,7 +24,9 @@ async function main(): Promise<void> {
 
   const pool = new Pool({ connectionString: DATABASE_URL });
   await migrate(pool);
-  createRoomServer(pool, verifyToken).http.listen(Number(PORT), () => {
+  const server = createRoomServer(pool, verifyToken);
+  serveSpa(server.http); // the built client (npm run build), when dist/ exists
+  server.http.listen(Number(PORT), () => {
     console.log(`room engine listening on :${PORT}`);
   });
 }
