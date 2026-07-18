@@ -44,11 +44,8 @@ export async function startHarness() {
   });
   await migrate(pool);
 
-  const tokens = new Map<string, string>(); // token → userId
-  const verifyToken = async (token: string) => {
-    const userId = tokens.get(token);
-    return userId ? { userId } : null;
-  };
+  const tokens = new Map<string, { userId: string; displayName: string }>();
+  const verifyToken = async (token: string) => tokens.get(token) ?? null;
 
   let server: RoomServer;
   let url: string;
@@ -70,7 +67,7 @@ export async function startHarness() {
       const userId = randomUUID();
       const token = randomUUID();
       const displayName = opts.displayName ?? `User ${++seq}`;
-      tokens.set(token, userId);
+      tokens.set(token, { userId, displayName });
       if (opts.profile !== null) {
         const p = opts.profile ?? { department: DEPARTMENTS[0], role: ROLES[0], tenure: TENURES[0] };
         await pool.query(

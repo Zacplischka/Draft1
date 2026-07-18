@@ -12,7 +12,13 @@ async function main(): Promise<void> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const verifyToken: VerifyToken = async (token) => {
     const { data, error } = await supabase.auth.getUser(token);
-    return error || !data.user ? null : { userId: data.user.id };
+    if (error || !data.user) return null;
+    const meta = data.user.user_metadata ?? {};
+    return {
+      userId: data.user.id,
+      // Google name only — never fall back to email (it would leak into the host's roster).
+      displayName: meta.full_name ?? meta.name ?? 'Unknown',
+    };
   };
 
   const pool = new Pool({ connectionString: DATABASE_URL });
