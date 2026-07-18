@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
-import type { Ack, Profile, SessionState } from '../shared/contract';
+import type { Ack, ErrorCode, Profile, SessionState } from '../shared/contract';
 import { getToken, signOut } from './auth';
 import { connectSocket } from './socket';
 import { SignIn } from './SignIn';
 import { ProfileForm } from './ProfileForm';
 import { Home } from './Home';
+import { History } from './History';
 import { CreateSession } from './CreateSession';
 import { JoinSession } from './JoinSession';
 import { Lobby } from './Lobby';
@@ -19,7 +20,16 @@ import { RankedList } from './RankedList';
 import { everyoneVotedAdvance } from './host-voting';
 import { SESSION_ID_KEY } from './create-session';
 
-type Route = 'loading' | 'signed-out' | 'first-profile' | 'home' | 'create' | 'join' | 'session' | 'report';
+type Route =
+  | 'loading'
+  | 'signed-out'
+  | 'first-profile'
+  | 'home'
+  | 'history'
+  | 'create'
+  | 'join'
+  | 'session'
+  | 'report';
 
 export default function App() {
   const [route, setRoute] = useState<Route>('loading');
@@ -33,6 +43,7 @@ export default function App() {
   const [authEpoch, setAuthEpoch] = useState(0); // bumped after dev sign-in to re-run the effect
   const prevSnapshot = useRef<SessionState | null>(null);
   const [everyoneVoted, setEveryoneVoted] = useState(false); // "opening the Ranked list…" toast
+  const [reportBack, setReportBack] = useState<Route>('session'); // where the report placeholder returns to
 
   useEffect(() => {
     let disposed = false;
@@ -108,6 +119,27 @@ export default function App() {
     setProfile(p);
     setEditing(false);
     setRoute('home');
+  }
+
+  // Dashboard "Open session" / "View ranked list": sessionId rejoin, legal in ANY phase
+  // (contract). Resolves the ErrorCode on failure so the dashboard can surface it.
+  async function openSession(id: string): Promise<ErrorCode | null> {
+    const ack: Ack = await socketRef.current!.emitWithAck('session:join', { sessionId: id });
+    if (!('ok' in ack)) {
+      if (ack.error === 'profile-required') setRoute('first-profile');
+      return ack.error;
+    }
+    localStorage.setItem(SESSION_ID_KEY, id); // the rejoin key (contract)
+    setSessionId(id);
+    setRoute('session');
+    return null;
+  }
+
+  // Report placeholder (#21): remember the session and where to return to.
+  function openReport(id: string, back: Route) {
+    setSessionId(id);
+    setReportBack(back);
+    setRoute('report');
   }
 
   async function handleSignOut() {
@@ -242,7 +274,10 @@ export default function App() {
               setSessionState(null);
               setRoute('home');
             }}
-            onOpenReport={() => setRoute('report')}
+            onOpenReport={() => {
+              setReportBack('session');
+              setRoute('report');
+            }}
           />
           {/* Everyone-voted auto-advance toast (#19) rides the voting → results flip. */}
           {everyoneVoted && (
@@ -269,26 +304,43 @@ export default function App() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 p-6">
         <p className="text-slate-500">The Host report is under construction.</p>
         <button
-          onClick={() => setRoute('session')}
+          onClick={() => setRoute(reportBack)}
           className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
         >
-          Back to Ranked list
+          {reportBack === 'session' ? 'Back to Ranked list' : 'Back'}
         </button>
       </div>
     );
   }
   return (
     <>
-      <Home
-        displayName={displayName}
-        onCreate={() => setRoute('create')}
-        onJoin={() => setRoute('join')}
-        onEditProfile={() => {
-          setSaveError(null);
-          setEditing(true);
-        }}
-        onSignOut={() => void handleSignOut()}
-      />
+      {route === 'history' ? (
+        <History
+          displayName={displayName}
+          onHome={() => setRoute('home')}
+          onEditProfile={() => {
+            setSaveError(null);
+            setEditing(true);
+          }}
+          onSignOut={() => void handleSignOut()}
+          onCreate={() => setRoute('create')}
+          onOpenReport={(id) => openReport(id, 'history')}
+        />
+      ) : (
+        <Home
+          displayName={displayName}
+          onCreate={() => setRoute('create')}
+          onJoin={() => setRoute('join')}
+          onEditProfile={() => {
+            setSaveError(null);
+            setEditing(true);
+          }}
+          onSignOut={() => void handleSignOut()}
+          onOpenSession={openSession}
+          onOpenReport={(id) => openReport(id, 'home')}
+          onOpenHistory={() => setRoute('history')}
+        />
+      )}
       {editing && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
