@@ -14,7 +14,7 @@ The single test seam (see `docs/SPEC.md` Testing Decisions). Every ticket implem
 ```ts
 type ErrorCode =
   | 'profile-required'   // no profile yet — complete profile:set first
-  | 'not-found'          // join code or session id doesn't resolve
+  | 'not-found'          // join code, session id, or solution id doesn't resolve
   | 'session-full'       // cap reached
   | 'voting-started'     // new joins locked once phase = voting
   | 'not-host'           // host-only event from a participant
@@ -41,7 +41,9 @@ type ErrorCode =
                      hostParticipates: boolean }
                    → ack { sessionId, joinCode }
 'session:preview'  { joinCode }                   // read-only lookup BEFORE joining — no membership
-                   → ack { problem, workflow, phase, participants: { count, cap } }
+                   → ack { problem, workflow, phase, participants: { count, cap },
+                           isMember: boolean }    // true → client offers REJOIN (full/voting-
+                                                  // started blocks apply to new joiners only)
                    // resolves the same sessions a code join would (phase != results);
                    // client uses phase/count to render found / full / voting-started screens
 'session:join'     { joinCode } | { sessionId }
@@ -56,7 +58,9 @@ type ErrorCode =
                                                   // closes further submissions;
                                                   // empty-deck if no solutions yet
 'solution:submit'  { text }                       // crowdsourced participant, lobby only, once
-'solution:add'     { text }                       // preset host, lobby only
+'solution:add'     { text }                       // host — preset: lobby; crowdsourced:
+                                                  // curation (recovers an emptied deck; the
+                                                  // mock's "Add at least one Solution" copy)
 'solution:edit'    { solutionId, text }           // host: ANY row — preset lobby rows,
                                                   // crowdsourced curation rows (originals
                                                   // and combined alike; matches the mock)
@@ -69,7 +73,8 @@ type ErrorCode =
                                                   // DECK IS IMMUTABLE FROM THIS MOMENT.
 'ballot:submit'    { scores: Record<SolutionId, number> }  // 0–100 ints; must cover the
                                                   // exact deck; atomic; once per member
-'voting:close'     {}                             // host; voting → results with votes in hand
+'voting:close'     {}                             // host; voting → results with votes in
+                                                  // hand — legal with ZERO ballots
 ```
 
 ### Phase × role matrix
@@ -129,6 +134,11 @@ type SessionState = {
 | `roster` | voting | never |
 | `results` | results | results |
 | everything else | always | always |
+
+**Zero-ballot results.** A voting phase whose counted total is 0 never auto-completes — the
+host's `voting:close` is the only exit, and closing before any ballot lands is always legal.
+Zero-ballot results/reports serve `avg`/`p25`/`p75` as `null` with deck order preserved
+(clients render "—"); the heatmap has no cohorts and whole-room rows carry `n: 0`.
 
 ## HTTP (host-only; `Authorization: Bearer <token>`)
 
