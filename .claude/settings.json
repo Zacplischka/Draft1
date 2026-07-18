@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) cd \"$CLAUDE_PROJECT_DIR\" && npx tsc --noEmit 1>&2 || exit 2 ;; esac",
+            "timeout": 60,
+            "statusMessage": "Type-checking (tsc --noEmit)…"
+          }
+        ]
+      }
+    ]
+  }
+}
