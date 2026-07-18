@@ -18,7 +18,7 @@ export function serveSpa(http: HttpServer, dir: string = join(process.cwd(), 'di
   if (!existsSync(join(dir, 'index.html'))) return;
   const root = resolve(dir);
   http.on('request', (req, res) => {
-    if (res.headersSent || req.url?.startsWith('/socket.io')) return;
+    if (res.headersSent || req.url?.startsWith('/socket.io') || req.url?.startsWith('/api/')) return;
     const path = resolve(join(root, (req.url ?? '/').split('?')[0]!));
     // Traversal guard + SPA fallback: anything outside root or without a file serves index.html.
     const file = path.startsWith(root) && extname(path) && existsSync(path) ? path : join(root, 'index.html');
