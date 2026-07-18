@@ -109,7 +109,29 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
         state.roster = roster.rows;
       }
     }
-    // ponytail: results payload omitted — issue #7
+    if (s.phase === 'results') {
+      // Deck order from SQL = the zero-ballot serving order; with ballots we re-rank below.
+      const { rows } = await pool.query(
+        `select s.id as "solutionId", s.text, avg(bs.score) as mean
+           from solutions s left join ballot_scores bs on bs.solution_id = s.id
+          where s.session_id = $1
+          group by s.id order by s.created_at, s.id`,
+        [sessionId],
+      );
+      const ranked = rows.map((r) => ({ ...r, mean: r.mean === null ? null : Number(r.mean) }));
+      // Rank by UNROUNDED mean, ties by solutionId ascending — one rule for socket
+      // results, report, and CSV alike (contract). Ballots are atomic over the whole
+      // deck, so means are either all present or all null (zero-ballot close, which
+      // keeps the SQL's deck order).
+      // ponytail: ranking inlined here — extract to share when the report/CSV endpoints land (#8)
+      if (ranked.some((r) => r.mean !== null)) {
+        ranked.sort((a, b) => b.mean - a.mean || (a.solutionId < b.solutionId ? -1 : 1));
+      }
+      state.results = {
+        // Served avg is an integer, round-half-up (Math.round on non-negative means).
+        ranked: ranked.map((r) => ({ solutionId: r.solutionId, text: r.text, avg: r.mean === null ? null : Math.round(r.mean) })),
+      };
+    }
     return state;
   }
 

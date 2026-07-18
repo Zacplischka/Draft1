@@ -34,7 +34,8 @@ export type SessionState = {
   deck?: { id: string; text: string; combined: boolean }[];
   votingProgress?: { voted: number; total: number };
   roster?: { displayName: string; voted: boolean }[];
-  results?: { ranked: { solutionId: string; text: string; avg: number }[] };
+  // avg null only on zero-ballot results (host closed before any ballot; deck order preserved)
+  results?: { ranked: { solutionId: string; text: string; avg: number | null }[] };
 };
 
 // Demographic enums — provisional per docs/CONTRACTS.md (swap when #25 resolves).
