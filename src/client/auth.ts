@@ -22,6 +22,16 @@ export async function getToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
+/** Bearer-authenticated GET for the host HTTP endpoints (docs/CONTRACTS.md).
+ *  Throws when signed out (no "Bearer null" requests) or on a non-2xx status. */
+export async function authedFetch(path: string): Promise<Response> {
+  const token = await getToken();
+  if (!token) throw new Error('signed out');
+  const res = await fetch(path, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(String(res.status));
+  return res;
+}
+
 export async function signInWithGoogle(): Promise<void> {
   await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
 }

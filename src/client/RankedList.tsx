@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SessionState } from '../shared/contract';
-import { getToken } from './auth';
 import { rankedListText } from './ranked-list';
+import { downloadReportCsv } from './host-report';
 
 /** Circular average-confidence badge; "—" on null (zero-ballot close), never NaN. */
 function AvgBadge({ avg, big, green }: { avg: number | null; big?: boolean; green?: boolean }) {
@@ -65,18 +65,7 @@ export function RankedList({
   async function exportCsv() {
     setCsvError(null);
     try {
-      const token = await getToken();
-      if (!token) throw new Error('signed out'); // no "Bearer null" — surface the retry message
-      const res = await fetch(`/api/sessions/${state.sessionId}/report.csv`, {
-        headers: { authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const url = URL.createObjectURL(await res.blob());
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'group-decision-report.csv';
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadReportCsv(state.sessionId);
     } catch {
       setCsvError('Could not export the CSV. Please try again.');
     }

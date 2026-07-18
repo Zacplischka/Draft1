@@ -17,6 +17,7 @@ import { PresetParticipant } from './PresetParticipant';
 import { Voting } from './Voting';
 import { Curation } from './Curation';
 import { RankedList } from './RankedList';
+import { Report } from './Report';
 import { everyoneVotedAdvance } from './host-voting';
 import { SESSION_ID_KEY } from './create-session';
 import { landedRoute, rejoinSession } from './reconnect';
@@ -353,17 +354,14 @@ export default function App() {
       );
     }
     if (route === 'report') {
-      // Mount point for the Host report screen (#21) — placeholder until it lands.
+      // Host report (#21) — reached only from host surfaces (Ranked-list host panel,
+      // dashboard, history); the HTTP endpoint 404s everyone else anyway.
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 p-6">
-          <p className="text-slate-500">The Host report is under construction.</p>
-          <button
-            onClick={() => setRoute(reportBack)}
-            className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
-          >
-            {reportBack === 'session' ? 'Back to Ranked list' : 'Back'}
-          </button>
-        </div>
+        <Report
+          sessionId={sessionId!}
+          backLabel={reportBack === 'session' ? 'Back to Ranked list' : 'Back'}
+          onBack={() => setRoute(reportBack)}
+        />
       );
     }
     return (
