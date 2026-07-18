@@ -19,6 +19,7 @@ import { Curation } from './Curation';
 import { RankedList } from './RankedList';
 import { everyoneVotedAdvance } from './host-voting';
 import { SESSION_ID_KEY } from './create-session';
+import { landedRoute, rejoinSession } from './reconnect';
 
 type Route =
   | 'loading'
@@ -42,6 +43,8 @@ export default function App() {
   const socketRef = useRef<Socket | null>(null);
   const [authEpoch, setAuthEpoch] = useState(0); // bumped after dev sign-in to re-run the effect
   const prevSnapshot = useRef<SessionState | null>(null);
+  const coldRejoin = useRef<string | null>(null); // sessionId whose first snapshot decides the cold-load landing (#23)
+  const [conn, setConn] = useState<'online' | 'offline' | 'restored'>('online');
   const [everyoneVoted, setEveryoneVoted] = useState(false); // "opening the Ranked list…" toast
   const [reportBack, setReportBack] = useState<Route>('session'); // where the report placeholder returns to
 
@@ -80,18 +83,68 @@ export default function App() {
           }, 4000);
         }
         prevSnapshot.current = s;
+        // Cold-load auto-rejoin: this session's first snapshot decides where we land (#23).
+        if (coldRejoin.current === s.sessionId) {
+          coldRejoin.current = null;
+          if (landedRoute('cold', s.phase) === 'home') {
+            localStorage.removeItem(SESSION_ID_KEY); // finished session — dead rejoin key
+            setRoute('home');
+            return;
+          }
+          setSessionId(s.sessionId);
+          setRoute('session');
+        }
         setSessionState(s);
+      });
+      // Auto-rejoin the stored session; a stale id clears the key and lands home (#23).
+      async function resume(id: string, kind: 'cold' | 'reconnect') {
+        if (kind === 'cold') coldRejoin.current = id;
+        const r = await rejoinSession((event, payload) => socket!.emitWithAck(event, payload), id).catch(() => null);
+        if (disposed || r === 'rejoined') return; // rejoined → the snapshot broadcast lands us
+        coldRejoin.current = null;
+        // Only a definitive not-found kills the key — a transient failure keeps it for next time.
+        if (r === 'stale') localStorage.removeItem(SESSION_ID_KEY);
+        // Clear only the DEAD session's state — a report/other screen open on a different
+        // session must not lose its id under it.
+        setSessionId((cur) => (cur === id ? null : cur));
+        setSessionState((cur) => (cur?.sessionId === id ? null : cur));
+        setRoute((prev) => (kind === 'cold' || prev === 'session' ? 'home' : prev));
+      }
+      let hadConnection = false;
+      socket.on('disconnect', (reason) => {
+        // Deliberate disconnects (sign-out, unmount) aren't "offline".
+        if (disposed || reason === 'io client disconnect') return;
+        setConn('offline');
       });
       socket.on('connect', () => {
         unauthorized = 0;
-        // On every (re)connect: profile:get routes first-time users to the form (contract).
+        if (hadConnection) {
+          // Reconnect: back-online banner + silent rejoin — never yank the user's route.
+          setConn('restored');
+          setTimeout(() => {
+            if (!disposed) setConn((c) => (c === 'restored' ? 'online' : c));
+          }, 4000);
+          const stored = localStorage.getItem(SESSION_ID_KEY);
+          if (stored) void resume(stored, 'reconnect');
+          return;
+        }
+        hadConnection = true;
+        // First connect: profile:get routes first-time users to the form (contract).
         void socket!
           .emitWithAck('profile:get', {})
           .then((ack: Ack<{ displayName: string; profile: Profile | null }>) => {
             if (disposed || !('ok' in ack)) return;
             setDisplayName(ack.displayName);
             setProfile(ack.profile);
-            setRoute(ack.profile ? 'home' : 'first-profile');
+            if (!ack.profile) {
+              setRoute('first-profile');
+              return;
+            }
+            // Cold load with a stored live session rejoins automatically — "we'll bring
+            // you back here" (#23). Route stays 'loading' until its snapshot lands.
+            const stored = localStorage.getItem(SESSION_ID_KEY);
+            if (stored) void resume(stored, 'cold');
+            else setRoute('home');
           });
       });
     })();
@@ -151,226 +204,248 @@ export default function App() {
     setRoute('signed-out');
   }
 
-  if (route === 'loading') {
-    return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>;
-  }
-  if (route === 'signed-out') {
-    return (
-      <SignIn
-        onDevSignIn={() => {
-          setRoute('loading');
-          setAuthEpoch((n) => n + 1);
-        }}
-      />
-    );
-  }
-  if (route === 'first-profile') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
-          <div className="mb-2 text-center font-semibold text-slate-900">🗳️ Group Decision</div>
-          <h1 className="mb-6 text-center text-2xl font-semibold text-slate-900">
-            Complete your profile
-          </h1>
-          <ProfileForm
-            initial={null}
-            submitLabel="Save profile"
-            onSave={(p) => void saveProfile(p)}
-            error={saveError}
-          />
-          <p className="mt-4 text-center text-xs text-slate-500">
-            🔒 Used only for anonymous, suppression-filtered reports.
-          </p>
+  function screen() {
+    if (route === 'loading') {
+      return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>;
+    }
+    if (route === 'signed-out') {
+      return (
+        <SignIn
+          onDevSignIn={() => {
+            setRoute('loading');
+            setAuthEpoch((n) => n + 1);
+          }}
+        />
+      );
+    }
+    if (route === 'first-profile') {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
+            <div className="mb-2 text-center font-semibold text-slate-900">🗳️ Group Decision</div>
+            <h1 className="mb-6 text-center text-2xl font-semibold text-slate-900">
+              Complete your profile
+            </h1>
+            <ProfileForm
+              initial={null}
+              submitLabel="Save profile"
+              onSave={(p) => void saveProfile(p)}
+              error={saveError}
+            />
+            <p className="mt-4 text-center text-xs text-slate-500">
+              🔒 Used only for anonymous, suppression-filtered reports.
+            </p>
+          </div>
         </div>
-      </div>
-    );
-  }
-  if (route === 'create') {
-    return (
-      <CreateSession
-        socket={socketRef.current!}
-        onBack={() => setRoute('home')}
-        onCreated={(id) => {
-          setSessionId(id);
-          setRoute('session');
-        }}
-        onProfileRequired={() => setRoute('first-profile')}
-      />
-    );
-  }
-  if (route === 'join') {
-    return (
-      <JoinSession
-        socket={socketRef.current!}
-        displayName={displayName}
-        onBack={() => setRoute('home')}
-        onJoined={(id) => {
-          setSessionId(id);
-          setRoute('session');
-        }}
-        onSwitchAccount={() => void handleSignOut()}
-        onProfileRequired={() => setRoute('first-profile')}
-      />
-    );
-  }
-  if (route === 'session') {
-    // Only this session's snapshots — a stale broadcast from an earlier room must not render.
-    const s = sessionState?.sessionId === sessionId ? sessionState : null;
-    // Host lobbies (#16); curation (#17); crowdsourced participant submit/waiting (#15);
-    // preset participant waiting (#16). Later phases stay on the placeholder.
-    if (s && s.isHost && s.phase === 'curation') {
+      );
+    }
+    if (route === 'create') {
       return (
-        <Curation
-          state={s}
-          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+        <CreateSession
+          socket={socketRef.current!}
+          onBack={() => setRoute('home')}
+          onCreated={(id) => {
+            setSessionId(id);
+            setRoute('session');
+          }}
+          onProfileRequired={() => setRoute('first-profile')}
         />
       );
     }
-    if (s && s.isHost && s.phase === 'lobby') {
+    if (route === 'join') {
       return (
-        <HostLobby
-          state={s}
-          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+        <JoinSession
+          socket={socketRef.current!}
+          displayName={displayName}
+          onBack={() => setRoute('home')}
+          onJoined={(id) => {
+            setSessionId(id);
+            setRoute('session');
+          }}
+          onSwitchAccount={() => void handleSignOut()}
+          onProfileRequired={() => setRoute('first-profile')}
         />
       );
     }
-    if (s && s.phase === 'voting') {
-      // Host control (#19) once the host has no ballot left to cast — a participating
-      // host votes on the deck (#18) first, then lands on the control screen.
-      if (s.isHost && (!s.hostParticipates || s.me.voted)) {
+    if (route === 'session') {
+      // Only this session's snapshots — a stale broadcast from an earlier room must not render.
+      const s = sessionState?.sessionId === sessionId ? sessionState : null;
+      // Host lobbies (#16); curation (#17); crowdsourced participant submit/waiting (#15);
+      // preset participant waiting (#16). Later phases stay on the placeholder.
+      if (s && s.isHost && s.phase === 'curation') {
         return (
-          <HostVotingControl
+          <Curation
             state={s}
             emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
           />
         );
       }
-      return (
-        <Voting
-          state={s}
-          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
-        />
-      );
-    }
-    if (s && !s.isHost && s.workflow === 'crowdsourced' && (s.phase === 'lobby' || s.phase === 'curation')) {
-      return (
-        <CrowdsourcedParticipant
-          state={s}
-          emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
-        />
-      );
-    }
-    if (s && !s.isHost && s.workflow === 'preset' && s.phase === 'lobby') {
-      return <PresetParticipant state={s} />;
-    }
-    if (s && s.phase === 'results') {
-      return (
-        <>
-          <RankedList
+      if (s && s.isHost && s.phase === 'lobby') {
+        return (
+          <HostLobby
             state={s}
-            onDone={() => {
-              localStorage.removeItem(SESSION_ID_KEY); // Done clears the rejoin key (contract)
-              setSessionId(null);
-              setSessionState(null);
-              setRoute('home');
-            }}
-            onOpenReport={() => {
-              setReportBack('session');
-              setRoute('report');
-            }}
+            emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
           />
-          {/* Everyone-voted auto-advance toast (#19) rides the voting → results flip. */}
-          {everyoneVoted && (
-            <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 shadow-lg">
-              <span aria-hidden>✅</span> Everyone has voted — opening the Ranked list…
-            </div>
-          )}
-        </>
+        );
+      }
+      if (s && s.phase === 'voting') {
+        // Host control (#19) once the host has no ballot left to cast — a participating
+        // host votes on the deck (#18) first, then lands on the control screen.
+        if (s.isHost && (!s.hostParticipates || s.me.voted)) {
+          return (
+            <HostVotingControl
+              state={s}
+              emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+            />
+          );
+        }
+        return (
+          <Voting
+            state={s}
+            emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+          />
+        );
+      }
+      if (s && !s.isHost && s.workflow === 'crowdsourced' && (s.phase === 'lobby' || s.phase === 'curation')) {
+        return (
+          <CrowdsourcedParticipant
+            state={s}
+            emit={(event, payload) => socketRef.current!.emitWithAck(event, payload)}
+          />
+        );
+      }
+      if (s && !s.isHost && s.workflow === 'preset' && s.phase === 'lobby') {
+        return <PresetParticipant state={s} />;
+      }
+      if (s && s.phase === 'results') {
+        return (
+          <>
+            <RankedList
+              state={s}
+              onDone={() => {
+                localStorage.removeItem(SESSION_ID_KEY); // Done clears the rejoin key (contract)
+                setSessionId(null);
+                setSessionState(null);
+                setRoute('home');
+              }}
+              onOpenReport={() => {
+                setReportBack('session');
+                setRoute('report');
+              }}
+            />
+            {/* Everyone-voted auto-advance toast (#19) rides the voting → results flip. */}
+            {everyoneVoted && (
+              <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 shadow-lg">
+                <span aria-hidden>✅</span> Everyone has voted — opening the Ranked list…
+              </div>
+            )}
+          </>
+        );
+      }
+      return (
+        <Lobby
+          state={s}
+          onBack={() => {
+            setSessionState(null);
+            setRoute('home');
+          }}
+        />
+      );
+    }
+    if (route === 'report') {
+      // Mount point for the Host report screen (#21) — placeholder until it lands.
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 p-6">
+          <p className="text-slate-500">The Host report is under construction.</p>
+          <button
+            onClick={() => setRoute(reportBack)}
+            className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+          >
+            {reportBack === 'session' ? 'Back to Ranked list' : 'Back'}
+          </button>
+        </div>
       );
     }
     return (
-      <Lobby
-        state={s}
-        onBack={() => {
-          setSessionState(null);
-          setRoute('home');
-        }}
-      />
+      <>
+        {route === 'history' ? (
+          <History
+            displayName={displayName}
+            onHome={() => setRoute('home')}
+            onEditProfile={() => {
+              setSaveError(null);
+              setEditing(true);
+            }}
+            onSignOut={() => void handleSignOut()}
+            onCreate={() => setRoute('create')}
+            onOpenReport={(id) => openReport(id, 'history')}
+          />
+        ) : (
+          <Home
+            displayName={displayName}
+            onCreate={() => setRoute('create')}
+            onJoin={() => setRoute('join')}
+            onEditProfile={() => {
+              setSaveError(null);
+              setEditing(true);
+            }}
+            onSignOut={() => void handleSignOut()}
+            onOpenSession={openSession}
+            onOpenReport={(id) => openReport(id, 'home')}
+            onOpenHistory={() => setRoute('history')}
+          />
+        )}
+        {editing && (
+          <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">Edit profile</h2>
+                <button
+                  onClick={() => setEditing(false)}
+                  aria-label="Close"
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              </div>
+              <ProfileForm
+                initial={profile}
+                submitLabel="Save changes"
+                onSave={(p) => void saveProfile(p)}
+                error={saveError}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </ProfileForm>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
-  if (route === 'report') {
-    // Mount point for the Host report screen (#21) — placeholder until it lands.
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 p-6">
-        <p className="text-slate-500">The Host report is under construction.</p>
-        <button
-          onClick={() => setRoute(reportBack)}
-          className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
-        >
-          {reportBack === 'session' ? 'Back to Ranked list' : 'Back'}
-        </button>
+
+  // Offline indicator / "You're back online" banner overlay every signed-in screen,
+  // including the cold-load 'loading' rejoin window (#23).
+  const chip =
+    conn === 'online' || route === 'signed-out' ? null : conn === 'offline' ? (
+      <div className="fixed left-1/2 top-4 z-40 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 shadow-lg">
+        <span aria-hidden>📡</span> You're offline — reconnecting…
+      </div>
+    ) : (
+      <div className="fixed left-1/2 top-4 z-40 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-800 shadow-lg">
+        <span aria-hidden>✅</span> You're back online
       </div>
     );
-  }
+
   return (
     <>
-      {route === 'history' ? (
-        <History
-          displayName={displayName}
-          onHome={() => setRoute('home')}
-          onEditProfile={() => {
-            setSaveError(null);
-            setEditing(true);
-          }}
-          onSignOut={() => void handleSignOut()}
-          onCreate={() => setRoute('create')}
-          onOpenReport={(id) => openReport(id, 'history')}
-        />
-      ) : (
-        <Home
-          displayName={displayName}
-          onCreate={() => setRoute('create')}
-          onJoin={() => setRoute('join')}
-          onEditProfile={() => {
-            setSaveError(null);
-            setEditing(true);
-          }}
-          onSignOut={() => void handleSignOut()}
-          onOpenSession={openSession}
-          onOpenReport={(id) => openReport(id, 'home')}
-          onOpenHistory={() => setRoute('history')}
-        />
-      )}
-      {editing && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Edit profile</h2>
-              <button
-                onClick={() => setEditing(false)}
-                aria-label="Close"
-                className="text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            </div>
-            <ProfileForm
-              initial={profile}
-              submitLabel="Save changes"
-              onSave={(p) => void saveProfile(p)}
-              error={saveError}
-            >
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            </ProfileForm>
-          </div>
-        </div>
-      )}
+      {screen()}
+      {chip}
     </>
   );
 }
