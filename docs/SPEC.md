@@ -1,6 +1,6 @@
 # Spec: Group Decision rebuild — Google auth, two workflows, confidence voting, anonymised reporting
 
-Published as [issue #1](https://github.com/zac-plischka_xephyr/Draft1/issues/1) (`ready-for-agent`) — the issue is canonical; this copy is for in-repo reading.
+Published as [issue #1](https://github.com/Zacplischka/Draft1/issues/1) (`ready-for-agent`) — the issue is canonical; this copy is for in-repo reading.
 
 ## Problem Statement
 
