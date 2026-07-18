@@ -38,6 +38,14 @@ export type SessionState = {
   results?: { ranked: { solutionId: string; text: string; avg: number | null }[] };
 };
 
+// GET /api/sessions/:id/report — host-only, phase = results (docs/CONTRACTS.md HTTP section).
+export type HostReport = {
+  session: { problem: string; workflow: Workflow; participants: number; closedAt: string };
+  // Ranked order (unrounded mean) — identical to results.ranked; null values only on zero-ballot close.
+  solutions: { id: string; text: string; avg: number | null; p25: number | null; p75: number | null }[];
+  heatmap: Record<string, Record<string, { n: number; cells: Record<string, number | 'suppressed'> }>>;
+};
+
 // Demographic enums — provisional per docs/CONTRACTS.md (swap when #25 resolves).
 export const DEPARTMENTS = ['Product', 'Engineering', 'Sales', 'Marketing', 'Operations', 'Other'] as const;
 export const ROLES = ['Individual Contributor', 'Team Lead', 'Manager', 'Director', 'Executive'] as const;

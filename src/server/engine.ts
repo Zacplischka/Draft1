@@ -1,4 +1,4 @@
-import { createServer, type Server as HttpServer } from 'node:http';
+import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
 import { randomInt } from 'node:crypto';
 import { Server, type Socket } from 'socket.io';
 import type { Pool, PoolClient } from 'pg';
@@ -12,9 +12,11 @@ import {
   SCORE_MAX,
   SCORE_MIN,
   SOLUTION_MAX_LENGTH,
+  SUPPRESSION_N,
   TENURES,
   type Ack,
   type ErrorCode,
+  type HostReport,
   type SessionState,
 } from '../shared/contract';
 
@@ -110,29 +112,155 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
       }
     }
     if (s.phase === 'results') {
-      // Deck order from SQL = the zero-ballot serving order; with ballots we re-rank below.
-      const { rows } = await pool.query(
-        `select s.id as "solutionId", s.text, avg(bs.score) as mean
-           from solutions s left join ballot_scores bs on bs.solution_id = s.id
-          where s.session_id = $1
-          group by s.id order by s.created_at, s.id`,
-        [sessionId],
-      );
-      const ranked = rows.map((r) => ({ ...r, mean: r.mean === null ? null : Number(r.mean) }));
-      // Rank by UNROUNDED mean, ties by solutionId ascending — one rule for socket
-      // results, report, and CSV alike (contract). Ballots are atomic over the whole
-      // deck, so means are either all present or all null (zero-ballot close, which
-      // keeps the SQL's deck order).
-      // ponytail: ranking inlined here — extract to share when the report/CSV endpoints land (#8)
-      if (ranked.some((r) => r.mean !== null)) {
-        ranked.sort((a, b) => b.mean - a.mean || (a.solutionId < b.solutionId ? -1 : 1));
-      }
       state.results = {
         // Served avg is an integer, round-half-up (Math.round on non-negative means).
-        ranked: ranked.map((r) => ({ solutionId: r.solutionId, text: r.text, avg: r.mean === null ? null : Math.round(r.mean) })),
+        ranked: (await rankedMeans(sessionId)).map((r) => ({
+          solutionId: r.solutionId,
+          text: r.text,
+          avg: r.mean === null ? null : Math.round(r.mean),
+        })),
       };
     }
     return state;
+  }
+
+  // Rank by UNROUNDED mean, ties by solutionId ascending — the ONE rule for socket
+  // results, report, and CSV alike (contract). Ballots are atomic over the whole
+  // deck, so means are either all present or all null (zero-ballot close, which
+  // keeps the SQL's deck/insertion order).
+  async function rankedMeans(sessionId: string): Promise<{ solutionId: string; text: string; mean: number | null }[]> {
+    const { rows } = await pool.query(
+      `select s.id as "solutionId", s.text, avg(bs.score) as mean
+         from solutions s left join ballot_scores bs on bs.solution_id = s.id
+        where s.session_id = $1
+        group by s.id order by s.created_at, s.id`,
+      [sessionId],
+    );
+    const ranked = rows.map((r) => ({ ...r, mean: r.mean === null ? null : Number(r.mean) }));
+    if (ranked.some((r) => r.mean !== null)) {
+      ranked.sort((a, b) => b.mean - a.mean || (a.solutionId < b.solutionId ? -1 : 1));
+    }
+    return ranked;
+  }
+
+  // ---- Host report over HTTP (docs/CONTRACTS.md HTTP section; issue #8) ----
+  // The single anonymity enforcement point of ADR-0002/0003: aggregates computed on
+  // read from ballot snapshot rows; per-user scores never leave this function.
+
+  const REPORT_PATH = /^\/api\/sessions\/([^/]+)\/report(\.csv)?$/;
+
+  http.on('request', (req, res) => {
+    const path = (req.url ?? '').split('?')[0]!;
+    const m = req.method === 'GET' ? REPORT_PATH.exec(path) : null;
+    if (!m) {
+      // static.ts skips /api/ entirely, so unmatched /api/ paths must answer here or hang.
+      if (path.startsWith('/api/')) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not-found' }));
+      }
+      return;
+    }
+    serveReport(req, res, m[1]!, Boolean(m[2])).catch((err) => {
+      console.error('[report]', err);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+  });
+
+  // Nearest-rank percentile over ascending integer scores (contract: spread = middle-50% range).
+  const nearestRank = (sorted: number[], p: number) => sorted[Math.ceil((p / 100) * sorted.length) - 1]!;
+  const roundedAvg = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
+
+  async function serveReport(req: IncomingMessage, res: ServerResponse, sessionId: string, asCsv: boolean): Promise<void> {
+    const auth = req.headers.authorization;
+    const verified = auth?.startsWith('Bearer ') ? await verifyToken(auth.slice(7)).catch(() => null) : null;
+    const send = (status: number, contentType: string, body: string) => {
+      res.writeHead(status, { 'content-type': contentType });
+      res.end(body);
+    };
+    // ONE 404 for participants, strangers, bad tokens, and unknown ids — no existence leak.
+    const s = verified && UUID_RE.test(sessionId)
+      ? (
+          await pool.query(
+            `select problem, workflow, phase, host_id, closed_at,
+                    (select count(*)::int from memberships m where m.session_id = s.id) as participants
+               from sessions s where s.id = $1`,
+            [sessionId],
+          )
+        ).rows[0]
+      : null;
+    if (!s || s.host_id !== verified!.userId) return send(404, 'application/json', JSON.stringify({ error: 'not-found' }));
+    if (s.phase !== 'results') return send(409, 'application/json', JSON.stringify({ error: 'bad-phase' }));
+
+    const ranked = await rankedMeans(sessionId);
+    const ballots: { id: string; department: string; role: string; tenure: string }[] = (
+      await pool.query('select id, department, role, tenure from ballots where session_id = $1', [sessionId])
+    ).rows;
+    // score per (solution, ballot) — ballots are atomic, so every ballot covers every solution
+    const scoreRows = (
+      await pool.query(
+        `select bs.solution_id as "solutionId", bs.ballot_id as "ballotId", bs.score
+           from ballot_scores bs join ballots b on b.id = bs.ballot_id
+          where b.session_id = $1`,
+        [sessionId],
+      )
+    ).rows;
+    const bySolution = new Map<string, Map<string, number>>();
+    for (const r of scoreRows) {
+      let m = bySolution.get(r.solutionId);
+      if (!m) bySolution.set(r.solutionId, (m = new Map()));
+      m.set(r.ballotId, r.score);
+    }
+
+    const solutions = ranked.map((r) => {
+      const scores = [...(bySolution.get(r.solutionId)?.values() ?? [])].sort((a, b) => a - b);
+      return scores.length
+        ? { id: r.solutionId, text: r.text, avg: Math.round(r.mean!), p25: nearestRank(scores, 25), p75: nearestRank(scores, 75) }
+        : { id: r.solutionId, text: r.text, avg: null, p25: null, p75: null };
+    });
+
+    // Cohorts from ballot SNAPSHOTS (never live profiles); zero-ballot cohorts don't appear.
+    // n is always served — it reveals attendance, never scores; values suppressed under N.
+    const heatmap: HostReport['heatmap'] = {};
+    const dimensions = { department: DEPARTMENTS, role: ROLES, tenure: TENURES } as const;
+    for (const [dim, cohortValues] of Object.entries(dimensions)) {
+      heatmap[dim] = {};
+      for (const cohort of cohortValues) {
+        const ids = ballots.filter((b) => b[dim as keyof typeof dimensions] === cohort).map((b) => b.id);
+        if (!ids.length) continue;
+        const cells: Record<string, number | 'suppressed'> = {};
+        for (const r of ranked) {
+          cells[r.solutionId] =
+            ids.length < SUPPRESSION_N ? 'suppressed' : roundedAvg(ids.map((id) => bySolution.get(r.solutionId)!.get(id)!));
+        }
+        heatmap[dim][cohort] = { n: ids.length, cells };
+      }
+    }
+
+    if (!asCsv) {
+      const report: HostReport = {
+        session: { problem: s.problem, workflow: s.workflow, participants: s.participants, closedAt: s.closed_at.toISOString() },
+        solutions,
+        heatmap,
+      };
+      return send(200, 'application/json', JSON.stringify(report));
+    }
+
+    // CSV mirrors the report: fixed 7-column header, one row per (solution × dimension ×
+    // cohort) in ranked order, whole-room rows first per solution. Suppressed avg is the
+    // literal SUPPRESSED; empty cells are empty strings (the "—" is UI, never in the file).
+    const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
+    const lines = ['solution_text,dimension,cohort,n_voters,avg,p25,p75'];
+    for (const sol of solutions) {
+      lines.push([esc(sol.text), 'all', 'all', ballots.length, sol.avg ?? '', sol.p25 ?? '', sol.p75 ?? ''].join(','));
+      for (const [dim, cohorts] of Object.entries(heatmap)) {
+        for (const [cohort, { n, cells }] of Object.entries(cohorts)) {
+          const cell = cells[sol.id]!;
+          lines.push([esc(sol.text), dim, esc(cohort), n, cell === 'suppressed' ? 'SUPPRESSED' : cell, '', ''].join(','));
+        }
+      }
+    }
+    send(200, 'text/csv; charset=utf-8', lines.join('\n') + '\n');
   }
 
   // After every mutation and on (re)join: per-socket because the snapshot is role-filtered.
