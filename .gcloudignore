@@ -1,0 +1,9 @@
+.git
+node_modules/
+.dev-pg/
+.env
+.DS_Store
+test/
+docs/
+.claude/
+scripts/
