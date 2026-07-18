@@ -145,7 +145,8 @@ type SessionState = {
                                                               // COUNTED participants only (a
                                                               // hostParticipates=false host is
                                                               // not listed)
-  results?: { ranked: { solutionId: string; text: string; avg: number }[] };
+  results?: { ranked: { solutionId: string; text: string; avg: number | null }[] };
+                                                      // avg null only on zero-ballot results
                                                       // ranked by UNROUNDED mean, ties broken
                                                       // by solutionId ascending — one rule for
                                                       // socket results, report, and CSV alike;
