@@ -4,7 +4,8 @@ The single test seam (see `docs/SPEC.md` Testing Decisions). Every ticket implem
 
 ## Transport & envelope
 
-- Socket.IO. The handshake carries `{ token }`; the server verifies it via Supabase before any handler runs (the stubbed boundary in tests — test identities are minted **with profiles preattached**). Client-supplied identity is never read.
+- Socket.IO. The handshake carries `{ token }`; the server verifies it via Supabase before any handler runs (the stubbed boundary in tests). Client-supplied identity is never read. **Handshake rejection**: a bad/expired token fails the connection itself — Socket.IO `connect_error` with message `'unauthorized'` (no ack envelope exists yet). Clients retry with a freshly-read token; if that too is rejected, treat as signed out and route to sign-in — never loop silently.
+- **No rate limiting or abuse controls in scope** (rooms cap at ~100; all events require a Google-authenticated token). Revisit only if abuse is observed in production.
 - Every client→server event acks `{ ok: true, ...data }` or `{ error: ErrorCode }`.
 - After every state mutation, and on (re)join, the server broadcasts a role-filtered `session:state` snapshot to the room. No granular diff events exist.
 - There is **no leave event**. "Leave session" / "Done" in the UI is client navigation; Membership is permanent. A member who leaves for good can therefore hold up everyone-voted auto-completion — the host's `voting:close` is the escape hatch.
@@ -58,7 +59,9 @@ type ErrorCode =
                    //   legal even during voting (lost-device recovery; cap/phase gates
                    //   don't apply to members)
                    // sessionId → REJOIN of an existing member, legal in ANY phase,
-                   //   returns the current snapshot; clients store sessionId from the ack
+                   //   returns the current snapshot; clients store sessionId from the ack.
+                   //   A NON-member's sessionId join acks `not-found` even when the id
+                   //   resolves — don't leak session existence
 'curation:start'   {}                             // host, crowdsourced: lobby → curation;
                                                   // closes further submissions;
                                                   // empty-deck if no solutions yet
@@ -119,11 +122,16 @@ type SessionState = {
                                                       // only. total = currently joined COUNTED
                                                       // participants (a hostParticipates=false
                                                       // host is excluded), NOT the cap
-  deck?: { id: string; text: string; combined: boolean }[];   // NO authors, ever
+  deck?: { id: string; text: string; combined: boolean }[];   // NO authors, ever. `combined`
+                                                              // is a seam-test observable —
+                                                              // no UI is required to render it
   votingProgress?: { voted: number; total: number };  // total = counted participants
                                                       // (hostParticipates-aware)
   roster?: { displayName: string; voted: boolean }[];         // HOST ONLY, voting phase —
-                                                              // who has finished; never scores
+                                                              // who has finished; never scores.
+                                                              // COUNTED participants only (a
+                                                              // hostParticipates=false host is
+                                                              // not listed)
   results?: { ranked: { solutionId: string; text: string; avg: number }[] };
                                                       // ranked by UNROUNDED mean; served avg
                                                       // is an integer (round-half-up) — same
@@ -159,12 +167,17 @@ GET /api/sessions/:id/report      → requires phase = results — 409 for a liv
                                       // participants = MEMBER count (exceeds ballot count
                                       // after an early close)
                                       solutions: [{ id, text, avg, p25, p75 }],
+                                      // served in RANKED order (unrounded mean) — identical
+                                      // to results.ranked; clients render rank = index + 1
                                       heatmap: { [dimension]: { [cohort]:
                                         { n: number,                 // cohort ballot count, always shown
                                           cells: { [solutionId]: number | 'suppressed' } } } } }
-GET /api/sessions/:id/report.csv  → one row per (solution × dimension × cohort):
-                                    solution_text, dimension, cohort, avg | SUPPRESSED, n_voters
-                                    plus whole-room rows (dimension = 'all', with p25/p75)
+GET /api/sessions/:id/report.csv  → fixed header: solution_text, dimension, cohort,
+                                      n_voters, avg, p25, p75
+                                    one row per (solution × dimension × cohort), rows in
+                                    ranked order; avg = number or SUPPRESSED; p25/p75 filled
+                                    on whole-room rows (dimension = 'all') and empty on
+                                    cohort rows; n_voters always filled
 ```
 
 **Spread = middle-50% range.** `p25`/`p75` are nearest-rank percentiles of that solution's ballot
