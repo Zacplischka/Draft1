@@ -18,6 +18,7 @@ import {
   type ErrorCode,
   type HostReport,
   type SessionState,
+  type SessionSummary,
 } from '../shared/contract';
 
 /** Verifies a handshake token; null → connect_error 'unauthorized'. Stubbed in tests.
@@ -151,6 +152,12 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
 
   http.on('request', (req, res) => {
     const path = (req.url ?? '').split('?')[0]!;
+    const fail = (err: unknown) => {
+      console.error('[http]', err);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    };
+    if (req.method === 'GET' && path === '/api/sessions') return void serveHistory(req, res).catch(fail);
     const m = req.method === 'GET' ? REPORT_PATH.exec(path) : null;
     if (!m) {
       // static.ts skips /api/ entirely, so unmatched /api/ paths must answer here or hang.
@@ -160,20 +167,51 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
       }
       return;
     }
-    serveReport(req, res, m[1]!, Boolean(m[2])).catch((err) => {
-      console.error('[report]', err);
-      if (!res.headersSent) res.writeHead(500);
-      res.end();
-    });
+    serveReport(req, res, m[1]!, Boolean(m[2])).catch(fail);
   });
+
+  // Bearer auth shared by the HTTP endpoints; null → the contract's single 404.
+  async function bearerUser(req: IncomingMessage): Promise<{ userId: string } | null> {
+    const auth = req.headers.authorization;
+    return auth?.startsWith('Bearer ') ? await verifyToken(auth.slice(7)).catch(() => null) : null;
+  }
+
+  // GET /api/sessions — host history (issue #10): every session the caller hosts,
+  // live and completed, newest first. Participants see only sessions THEY host.
+  async function serveHistory(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const verified = await bearerUser(req);
+    const send = (status: number, body: string) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(body);
+    };
+    if (!verified) return send(404, JSON.stringify({ error: 'not-found' }));
+    const { rows } = await pool.query(
+      `select s.id, s.problem, s.workflow, s.phase, s.join_code, s.cap, s.created_at, s.closed_at,
+              (select count(*)::int from memberships m where m.session_id = s.id) as participants
+         from sessions s where s.host_id = $1
+        order by s.created_at desc, s.id`,
+      [verified.userId],
+    );
+    const sessions: SessionSummary[] = rows.map((r) => ({
+      id: r.id,
+      problem: r.problem,
+      workflow: r.workflow,
+      phase: r.phase,
+      ...(r.phase !== 'results' ? { joinCode: r.join_code } : {}),
+      participants: r.participants,
+      cap: r.cap,
+      createdAt: r.created_at.toISOString(),
+      ...(r.closed_at ? { closedAt: r.closed_at.toISOString() } : {}),
+    }));
+    send(200, JSON.stringify(sessions));
+  }
 
   // Nearest-rank percentile over ascending integer scores (contract: spread = middle-50% range).
   const nearestRank = (sorted: number[], p: number) => sorted[Math.ceil((p / 100) * sorted.length) - 1]!;
   const roundedAvg = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
 
   async function serveReport(req: IncomingMessage, res: ServerResponse, sessionId: string, asCsv: boolean): Promise<void> {
-    const auth = req.headers.authorization;
-    const verified = auth?.startsWith('Bearer ') ? await verifyToken(auth.slice(7)).catch(() => null) : null;
+    const verified = await bearerUser(req);
     const send = (status: number, contentType: string, body: string) => {
       res.writeHead(status, { 'content-type': contentType });
       res.end(body);

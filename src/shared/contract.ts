@@ -38,6 +38,19 @@ export type SessionState = {
   results?: { ranked: { solutionId: string; text: string; avg: number | null }[] };
 };
 
+// GET /api/sessions — ALL sessions of the authenticated host, live and completed (docs/CONTRACTS.md).
+export type SessionSummary = {
+  id: string;
+  problem: string;
+  workflow: Workflow;
+  phase: Phase;
+  joinCode?: string; // only while phase != results — the code recycles
+  participants: number;
+  cap: number;
+  createdAt: string;
+  closedAt?: string;
+};
+
 // GET /api/sessions/:id/report — host-only, phase = results (docs/CONTRACTS.md HTTP section).
 export type HostReport = {
   session: { problem: string; workflow: Workflow; participants: number; closedAt: string };
