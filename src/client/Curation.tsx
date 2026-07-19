@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Combine, Pencil, Trash2, X } from 'lucide-react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode, Stepper } from './HostLobby';
@@ -37,7 +38,7 @@ function CombineModal({
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Combine {sources.length} Solutions</h2>
           <button onClick={onCancel} aria-label="Close" className={btnGhost}>
-            ✕
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
         <p className="mt-1 text-sm text-slate-500">Edit this into one clear Solution.</p>
@@ -53,7 +54,7 @@ function CombineModal({
           className="mt-1 w-full rounded-xl border border-indigo-300 bg-white p-3 text-slate-900 focus:border-indigo-500"
         />
         <div className="mt-3 text-sm font-medium text-slate-700">
-          ⧉ Combined from {sources.length} Solutions
+          <Combine className="inline h-4 w-4" aria-hidden /> Combined from {sources.length} Solutions
         </div>
         <ul className="mt-1 list-disc pl-6 text-sm text-slate-500">
           {sources.map((s) => (
@@ -104,10 +105,10 @@ function DeleteDialog({
           aria-label="Close"
           className={`${btnGhost} absolute right-4 top-4`}
         >
-          ✕
+          <X className="h-4 w-4" aria-hidden />
         </button>
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-xl" aria-hidden>
-          🗑️
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500" aria-hidden>
+          <Trash2 className="h-6 w-6" />
         </div>
         <h2 className="mt-3 text-lg font-semibold text-slate-900">Remove this Solution?</h2>
         <p className="mt-1 text-sm text-slate-500">This can&rsquo;t be undone after voting starts.</p>
@@ -314,7 +315,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                         aria-label={`Edit ${d.text}`}
                         className={`${btnGhost} rounded border border-slate-200 px-2 py-1`}
                       >
-                        ✏️
+                        <Pencil className="h-4 w-4" aria-hidden />
                       </button>
                       <button
                         onClick={() => {
@@ -324,7 +325,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                         aria-label={`Delete ${d.text}`}
                         className={`${btnGhostDanger} rounded border border-slate-200 px-2 py-1`}
                       >
-                        🗑️
+                        <Trash2 className="h-4 w-4" aria-hidden />
                       </button>
                     </span>
                   </li>

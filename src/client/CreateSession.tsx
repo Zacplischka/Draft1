@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
 import { CAP_DEFAULT, CAP_MAX, CAP_MIN, PROBLEM_MAX_LENGTH, SOLUTION_MAX_LENGTH, type Workflow } from '../shared/contract';
 import { createSession, SESSION_ID_KEY, validateDetails } from './create-session';
@@ -158,7 +159,7 @@ export function CreateSession({
                         aria-label={`Remove ${text}`}
                         className={`${btnGhost} rounded border border-slate-200 px-2`}
                       >
-                        ✕
+                        <X className="h-4 w-4" aria-hidden />
                       </button>
                     </li>
                   ))}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { participantView, percentComplete, submitSolution } from './submit-solution';
@@ -16,7 +17,9 @@ const STEPS = [
 function StepDot({ i }: { i: number }) {
   if (i === 0)
     return (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-xs text-white">✓</span>
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
+        <Check className="h-3.5 w-3.5" aria-hidden />
+      </span>
     );
   if (i === 1) return <span className="h-6 w-6 rounded-full border-4 border-indigo-600 bg-indigo-600" />;
   return <span className="h-6 w-6 rounded-full border-2 border-slate-300 bg-white" />;
@@ -158,7 +161,7 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
                     submitted ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-500'
                   }`}
                 >
-                  {submitted ? '✓' : '🕐'}
+                  {submitted ? <Check className="h-8 w-8" aria-hidden /> : '🕐'}
                 </span>
                 <h1 className="mt-4 text-2xl font-semibold text-slate-900">
                   {submitted ? 'Solution submitted' : 'Submissions are closed'}
@@ -169,7 +172,7 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
               {submitted && ownText && (
                 <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
                   <div className="flex items-center gap-2 font-medium text-green-800">
-                    <span aria-hidden>✓</span> Your submission is saved
+                    <Check className="h-4 w-4 shrink-0" aria-hidden /> Your submission is saved
                   </div>
                   <p className="mt-1 text-green-900">{ownText}</p>
                 </div>

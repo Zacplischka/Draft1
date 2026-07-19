@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { Check, ChevronRight } from 'lucide-react';
 import type { ErrorCode } from '../shared/contract';
 import { btnPrimary, btnSecondary, btnLink, btnGhost, menuItem, tabIdle } from './button';
 import { ErrorText } from './Announce';
@@ -193,7 +194,7 @@ export function Home({
                             <span className="font-medium tracking-widest text-slate-900">{active.joinCode}</span>
                             <CopyButton
                               text={active.joinCode}
-                              label="📋 Copy"
+                              label="Copy"
                               ariaLabel="Copy join code"
                               className={`${btnGhost} text-sm`}
                             />
@@ -222,9 +223,9 @@ export function Home({
                 <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
                   <span
                     aria-hidden
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm text-green-600"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600"
                   >
-                    ✓
+                    <Check className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-slate-900">{s.problem}</p>
@@ -243,13 +244,13 @@ export function Home({
                       onClick={() => void open(s.id)}
                       className={`${btnLink} text-sm`}
                     >
-                      View ranked list ›
+                      View ranked list <ChevronRight className="inline h-4 w-4" aria-hidden />
                     </button>
                     <button
                       onClick={() => onOpenReport(s.id)}
                       className={`${btnLink} text-sm`}
                     >
-                      Open report ›
+                      Open report <ChevronRight className="inline h-4 w-4" aria-hidden />
                     </button>
                   </div>
                 </li>
@@ -261,7 +262,7 @@ export function Home({
         {sessions && sessions.length > 0 && (
           <div className="mt-8 text-center">
             <button onClick={onOpenHistory} className={btnLink}>
-              View all Session history ›
+              View all Session history <ChevronRight className="inline h-4 w-4" aria-hidden />
             </button>
           </div>
         )}

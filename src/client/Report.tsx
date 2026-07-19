@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { SUPPRESSION_N, type HostReport } from '../shared/contract';
 import { formatDate, workflowLabel } from './dashboard';
 import { btnPrimary, btnSecondary, tabIdle } from './button';
@@ -121,7 +122,7 @@ export function Report({
           onClick={onBack}
           className={`${btnSecondary} rounded-lg border-indigo-300 px-5 py-2.5`}
         >
-          ← {backLabel}
+          <ArrowLeft className="inline h-4 w-4" aria-hidden /> {backLabel}
         </button>
       </div>
     );
@@ -143,7 +144,7 @@ export function Report({
               onClick={onBack}
               className={`${btnSecondary} rounded-lg border-indigo-300 px-4 py-2`}
             >
-              ← {backLabel}
+              <ArrowLeft className="inline h-4 w-4" aria-hidden /> {backLabel}
             </button>
             <button
               onClick={() =>
@@ -154,7 +155,7 @@ export function Report({
               }
               className={`${btnPrimary} rounded-lg px-4 py-2`}
             >
-              ⬇️ Export CSV
+              <Download className="inline h-4 w-4" aria-hidden /> Export CSV
             </button>
           </div>
         </div>

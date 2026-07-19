@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Check } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
 import { SESSION_ID_KEY } from './create-session';
 import { joinSession, previewSession, screenFor, type Preview, type Screen } from './join-session';
@@ -82,7 +83,7 @@ function PreviewRows({ preview, countClass }: { preview: Preview; countClass: st
   );
 }
 
-function StatusBadge({ tone, glyph }: { tone: string; glyph: string }) {
+function StatusBadge({ tone, glyph }: { tone: string; glyph: ReactNode }) {
   return (
     <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full text-3xl ${tone}`}>
       {glyph}
@@ -235,7 +236,7 @@ export function JoinSession({
 
         {(screen === 'found' || screen === 'rejoin') && preview && (
           <div className="mt-8 text-center">
-            <StatusBadge tone="bg-green-100 text-green-600" glyph="✓" />
+            <StatusBadge tone="bg-green-100 text-green-600" glyph={<Check className="h-8 w-8" aria-hidden />} />
             <h1 className="mt-4 text-2xl font-semibold text-slate-900">Session found</h1>
             <p className="mt-2 text-slate-500">{preview.problem}</p>
             <PreviewRows preview={preview} countClass="text-green-600" />
