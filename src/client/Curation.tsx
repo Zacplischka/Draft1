@@ -50,7 +50,7 @@ function CombineModal({
           onChange={(e) => setText(e.target.value.slice(0, SOLUTION_MAX_LENGTH))}
           rows={3}
           data-autofocus
-          className="mt-1 w-full rounded-xl border border-indigo-300 bg-white p-3 text-slate-900 focus:border-indigo-500 focus:outline-none"
+          className="mt-1 w-full rounded-xl border border-indigo-300 bg-white p-3 text-slate-900 focus:border-indigo-500"
         />
         <div className="mt-3 text-sm font-medium text-slate-700">
           ⧉ Combined from {sources.length} Solutions
@@ -270,7 +270,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                       }}
                       maxLength={SOLUTION_MAX_LENGTH}
                       autoFocus
-                      className="w-full bg-transparent py-1 text-slate-900 focus:outline-none"
+                      className="w-full bg-transparent py-1 text-slate-900"
                     />
                     <button
                       onClick={() => saveEdit(d.id)}
@@ -353,7 +353,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
               }}
               maxLength={SOLUTION_MAX_LENGTH}
               placeholder="Add a solution"
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
             />
             <button
               onClick={add}

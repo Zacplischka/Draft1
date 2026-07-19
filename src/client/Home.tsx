@@ -1,7 +1,8 @@
-import { useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import type { ErrorCode } from '../shared/contract';
 import { btnPrimary, btnSecondary, btnLink, btnGhost, menuItem, tabIdle } from './button';
 import { ErrorText } from './Announce';
+import { CopyButton } from './CopyButton';
 import {
   activeSession,
   formatDate,
@@ -31,6 +32,23 @@ export function AppHeader({
 }) {
   // Native <details> dropdown; close it when a menu item is picked.
   const closeMenu = (e: MouseEvent) => e.currentTarget.closest('details')?.removeAttribute('open');
+  // Also close on outside click and Escape (issue #29).
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const menu = menuRef.current;
+      if (menu?.open && !menu.contains(e.target as Node)) menu.removeAttribute('open');
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') menuRef.current?.removeAttribute('open');
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
   return (
     <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
       <button onClick={onHome} className="font-semibold text-slate-900">
@@ -47,7 +65,7 @@ export function AppHeader({
         >
           Sessions
         </button>
-        <details className="relative">
+        <details ref={menuRef} className="relative">
           <summary className="cursor-pointer list-none rounded-full bg-indigo-100 px-3 py-1.5 text-sm font-medium text-indigo-800">
             {displayName}
           </summary>
@@ -99,20 +117,9 @@ export function Home({
   onOpenHistory: () => void;
 }) {
   const { sessions, error } = useSessions();
-  const [copied, setCopied] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
   const active = activeSession(sessions ?? []);
   const recent = recentSessions(sessions ?? []);
-
-  function copyJoinCode(code: string) {
-    navigator.clipboard
-      .writeText(code)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {}); // clipboard permission denied — nothing to recover
-  }
 
   async function open(sessionId: string) {
     setOpenError(null);
@@ -184,13 +191,12 @@ export function Home({
                           <div className="text-sm text-slate-500">Join code</div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium tracking-widest text-slate-900">{active.joinCode}</span>
-                            <button
-                              onClick={() => copyJoinCode(active.joinCode!)}
-                              aria-label="Copy join code"
-                              className={btnGhost}
-                            >
-                              {copied ? '✓' : '📋'}
-                            </button>
+                            <CopyButton
+                              text={active.joinCode}
+                              label="📋 Copy"
+                              ariaLabel="Copy join code"
+                              className={`${btnGhost} text-sm`}
+                            />
                           </div>
                         </div>
                       )}

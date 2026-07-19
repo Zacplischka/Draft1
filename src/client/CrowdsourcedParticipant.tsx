@@ -4,6 +4,7 @@ import type { Emit } from './create-session';
 import { participantView, percentComplete, submitSolution } from './submit-solution';
 import { btnPrimary } from './button';
 import { ErrorText, LiveStatus } from './Announce';
+import { ProgressBar } from './ProgressBar';
 
 const STEPS = [
   { label: 'Join', sub: 'You joined the session' },
@@ -48,9 +49,7 @@ function SubmissionsBar({ submissions }: { submissions: { submitted: number; tot
       <div className="font-semibold text-slate-900">
         {submissions.submitted} of {submissions.total} Participants submitted
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-        <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
-      </div>
+      <ProgressBar pct={pct} />
       <div className="mt-2 text-sm text-slate-500">{pct}% complete</div>
     </div>
   );
@@ -131,7 +130,7 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
                   onChange={(e) => setText(e.target.value.slice(0, SOLUTION_MAX_LENGTH))}
                   placeholder="Describe your best solution..."
                   rows={4}
-                  className="w-full rounded-2xl border border-slate-300 bg-white p-4 pb-8 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-300 bg-white p-4 pb-8 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
                 />
                 <span className="pointer-events-none absolute bottom-3 right-4 text-sm text-slate-400">
                   {text.length} / {SOLUTION_MAX_LENGTH}

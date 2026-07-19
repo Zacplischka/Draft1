@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SCORE_MAX, SCORE_MIN, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete } from './submit-solution';
-import { ProgressBar } from './HostLobby';
+import { ProgressBar } from './ProgressBar';
 import { btnPrimary, btnSecondary, btnNeutral, btnLink, btnGhost } from './button';
 import { Modal } from './Modal';
 import { ErrorText, LiveStatus } from './Announce';
@@ -329,12 +329,11 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
             Solution {Math.min(index + 1, deck.length)} of {deck.length}
           </span>
         </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
-          <div
-            className="h-full rounded-full bg-indigo-600 transition-all"
-            style={{ width: `${deck.length ? (index / deck.length) * 100 : 0}%` }}
-          />
-        </div>
+        <ProgressBar
+          pct={deck.length ? (index / deck.length) * 100 : 0}
+          className="mt-3 h-1.5"
+          color="bg-indigo-600"
+        />
 
         {/* Collapsed = one truncated line; open = full problem statement. */}
         <details className="group mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">

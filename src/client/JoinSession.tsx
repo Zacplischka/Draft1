@@ -180,12 +180,20 @@ export function JoinSession({
           <>
             <h1 className="mt-2 text-2xl font-semibold text-slate-900">Join a session</h1>
             <p className="mt-1 text-slate-500">Enter the 6-digit Join code shared by the Host.</p>
-            <div className="mt-6">
-              <CodeInput code={code} onChange={setCode} invalid={false} autoFocus />
-            </div>
-            <button onClick={() => void find()} disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
-              {busy ? 'Finding…' : 'Find session'}
-            </button>
+            {/* Form so Enter submits once 6 digits are entered (issue #29). */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void find();
+              }}
+            >
+              <div className="mt-6">
+                <CodeInput code={code} onChange={setCode} invalid={false} autoFocus />
+              </div>
+              <button type="submit" disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
+                {busy ? 'Finding…' : 'Find session'}
+              </button>
+            </form>
           </>
         )}
 
@@ -196,13 +204,20 @@ export function JoinSession({
               We couldn&rsquo;t find that Session
             </h1>
             <p className="mt-2 text-slate-500">Check the Join code and try again.</p>
-            <div className="mt-6 text-left">
-              <CodeInput code={code} onChange={setCode} invalid />
-              <ErrorText className="mt-1">Check the Join code and try again.</ErrorText>
-            </div>
-            <button onClick={() => void find()} disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
-              {busy ? 'Finding…' : 'Try again'}
-            </button>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void find();
+              }}
+            >
+              <div className="mt-6 text-left">
+                <CodeInput code={code} onChange={setCode} invalid />
+                <ErrorText className="mt-1">Check the Join code and try again.</ErrorText>
+              </div>
+              <button type="submit" disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
+                {busy ? 'Finding…' : 'Try again'}
+              </button>
+            </form>
           </div>
         )}
 
