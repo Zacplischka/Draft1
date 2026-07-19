@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { DEPARTMENTS, ROLES, TENURES, type Profile } from '../shared/contract';
 import { btnPrimary } from './button';
+import { ErrorText } from './Announce';
 
 const FIELDS = [
   ['department', 'Department', DEPARTMENTS],
@@ -48,7 +49,7 @@ export function ProfileForm({
           </select>
         </label>
       ))}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       <div className="flex gap-3 pt-1">
         <button
           type="submit"

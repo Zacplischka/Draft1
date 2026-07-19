@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { CAP_DEFAULT, CAP_MAX, CAP_MIN, PROBLEM_MAX_LENGTH, SOLUTION_MAX_LENGTH, type Workflow } from '../shared/contract';
 import { createSession, SESSION_ID_KEY, validateDetails } from './create-session';
 import { btnPrimary, btnSecondary, btnLink, btnGhost } from './button';
+import { ErrorText } from './Announce';
 
 const WORKFLOWS: { value: Workflow; label: string; blurb: string }[] = [
   {
@@ -113,7 +114,7 @@ export function CreateSession({
                 placeholder="Enter a problem statement."
                 className={fieldClass(problemTouched && Boolean(errors.problem))}
               />
-              {problemTouched && errors.problem && <span className="mt-1 block text-sm text-red-600">{errors.problem}</span>}
+              {problemTouched && errors.problem && <ErrorText className="mt-1">{errors.problem}</ErrorText>}
             </label>
 
             <fieldset>
@@ -194,9 +195,11 @@ export function CreateSession({
                 onChange={(e) => setCapText(e.target.value)}
                 className={fieldClass(Boolean(errors.cap))}
               />
-              <span className={`mt-1 block text-sm ${errors.cap ? 'text-red-600' : 'text-slate-500'}`}>
-                {errors.cap ?? `Maximum ${CAP_MAX}`}
-              </span>
+              {errors.cap ? (
+                <ErrorText className="mt-1">{errors.cap}</ErrorText>
+              ) : (
+                <span className="mt-1 block text-sm text-slate-500">Maximum {CAP_MAX}</span>
+              )}
             </label>
 
             <label className="flex items-center gap-3">
@@ -231,7 +234,7 @@ export function CreateSession({
                 </dd>
               </div>
             </dl>
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            {error && <ErrorText className="mt-3">{error}</ErrorText>}
             <button
               onClick={() => void create()}
               disabled={invalid || submitting}

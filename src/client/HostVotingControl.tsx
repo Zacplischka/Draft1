@@ -4,6 +4,7 @@ import type { Emit } from './create-session';
 import { JoinCode } from './HostLobby';
 import { closeVoting, initials } from './host-voting';
 import { btnSecondary, btnDangerOutline, btnGhost } from './button';
+import { ErrorText } from './Announce';
 
 function StatCard({ icon, tint, value, label }: { icon: string; tint: string; value: string; label: string }) {
   return (
@@ -109,7 +110,7 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
           </button>
           <p className="text-sm text-slate-500">Voting closes automatically when every Participant finishes.</p>
         </div>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <ErrorText className="mt-3">{error}</ErrorText>}
       </main>
 
       {confirming && (

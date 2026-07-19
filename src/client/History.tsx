@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AppHeader } from './Home';
 import { btnPrimary, btnNeutral, tabIdle } from './button';
+import { ErrorText } from './Announce';
 import {
   filterSessions,
   formatDate,
@@ -71,9 +72,11 @@ export function History({
         <p className="mt-1 text-slate-500">Review past Sessions and open reports.</p>
 
         {sessions === null ? (
-          <p className="mt-10 text-center text-slate-400">
-            {error ? 'Could not load your sessions. Retrying…' : 'Loading…'}
-          </p>
+          error ? (
+            <ErrorText className="mt-10 text-center">Could not load your sessions. Retrying…</ErrorText>
+          ) : (
+            <p className="mt-10 text-center text-slate-400">Loading…</p>
+          )
         ) : sessions.length === 0 ? (
           <div className="mx-auto mt-10 max-w-sm text-center">
             <div aria-hidden className="text-5xl">
