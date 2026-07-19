@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { SESSION_ID_KEY } from './create-session';
 import { joinSession, previewSession, screenFor, type Preview, type Screen } from './join-session';
 import { btnLink, btnPrimary } from './button';
+import { ErrorText } from './Announce';
 
 const CODE_LENGTH = 6;
 
@@ -197,7 +198,7 @@ export function JoinSession({
             <p className="mt-2 text-slate-500">Check the Join code and try again.</p>
             <div className="mt-6 text-left">
               <CodeInput code={code} onChange={setCode} invalid />
-              <p className="mt-1 text-sm text-red-600">Check the Join code and try again.</p>
+              <ErrorText className="mt-1">Check the Join code and try again.</ErrorText>
             </div>
             <button onClick={() => void find()} disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
               {busy ? 'Finding…' : 'Try again'}
@@ -243,7 +244,7 @@ export function JoinSession({
           </div>
         )}
 
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <ErrorText className="mt-3">{error}</ErrorText>}
 
         <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-4">
           <span className="flex items-center gap-3">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { SUPPRESSION_N, type HostReport } from '../shared/contract';
 import { formatDate, workflowLabel } from './dashboard';
 import { btnPrimary, btnSecondary, tabIdle } from './button';
+import { ErrorText } from './Announce';
 import {
   DIMENSIONS,
   cellTone,
@@ -157,7 +158,7 @@ export function Report({
             </button>
           </div>
         </div>
-        {csvError && <p className="mt-2 text-right text-sm text-red-600">{csvError}</p>}
+        {csvError && <ErrorText className="mt-2 text-right">{csvError}</ErrorText>}
 
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">{report.session.problem}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">

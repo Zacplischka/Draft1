@@ -3,6 +3,7 @@ import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { participantView, percentComplete, submitSolution } from './submit-solution';
 import { btnPrimary } from './button';
+import { ErrorText, LiveStatus } from './Announce';
 
 const STEPS = [
   { label: 'Join', sub: 'You joined the session' },
@@ -117,6 +118,8 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
             <div className="mt-1 text-lg font-medium text-slate-900">{state.problem}</div>
           </div>
 
+          <LiveStatus message={submitted ? 'Solution submitted.' : null} />
+
           {view === 'submit' && (
             <>
               <ProgressRail />
@@ -141,7 +144,7 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
               >
                 {busy ? 'Submitting…' : 'Submit solution'}
               </button>
-              {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+              {error && <ErrorText className="mt-3">{error}</ErrorText>}
               <p className="mt-4 text-center text-sm text-slate-500">🔒 You can submit once.</p>
             </>
           )}

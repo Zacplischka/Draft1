@@ -4,6 +4,7 @@ import type { Emit } from './create-session';
 import { percentComplete, submitSolution } from './submit-solution';
 import { addSolution, beginCuration, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
 import { btnPrimary, btnSecondary, btnLink, btnGhost, btnGhostDanger } from './button';
+import { ErrorText, LiveStatus } from './Announce';
 
 export function JoinCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -66,16 +67,7 @@ function HostSubmit({ state, emit }: { state: SessionState; emit: Emit }) {
   const [error, setError] = useState<string | null>(null);
   const [acked, setAcked] = useState(false);
 
-  if (state.me.submitted || acked) {
-    return (
-      <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
-        <div className="flex items-center gap-2 font-medium text-green-800">
-          <span aria-hidden>✓</span> Your submission is saved
-        </div>
-        {(state.me.submissionText ?? text) && <p className="mt-1 text-green-900">{state.me.submissionText ?? text}</p>}
-      </div>
-    );
-  }
+  const submitted = state.me.submitted || acked;
   async function submit() {
     setBusy(true);
     setError(null);
@@ -89,30 +81,43 @@ function HostSubmit({ state, emit }: { state: SessionState; emit: Emit }) {
       setBusy(false);
     }
   }
+  // The live region must outlive the submitted/form swap to announce it.
   return (
-    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="font-semibold text-slate-900">You are participating — submit one solution</div>
-      <div className="relative mt-3">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, SOLUTION_MAX_LENGTH))}
-          placeholder="Describe your best solution..."
-          rows={3}
-          className="w-full rounded-xl border border-slate-300 bg-white p-3 pb-7 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
-        />
-        <span className="pointer-events-none absolute bottom-3 right-3 text-sm text-slate-400">
-          {text.length} / {SOLUTION_MAX_LENGTH}
-        </span>
-      </div>
-      <button
-        onClick={() => void submit()}
-        disabled={!text.trim() || busy}
-        className={`${btnPrimary} mt-2 rounded-lg px-4 py-2`}
-      >
-        {busy ? 'Submitting…' : 'Submit solution'}
-      </button>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </div>
+    <>
+      <LiveStatus message={submitted ? 'Solution submitted.' : null} />
+      {submitted ? (
+        <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
+          <div className="flex items-center gap-2 font-medium text-green-800">
+            <span aria-hidden>✓</span> Your submission is saved
+          </div>
+          {(state.me.submissionText ?? text) && <p className="mt-1 text-green-900">{state.me.submissionText ?? text}</p>}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="font-semibold text-slate-900">You are participating — submit one solution</div>
+          <div className="relative mt-3">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, SOLUTION_MAX_LENGTH))}
+              placeholder="Describe your best solution..."
+              rows={3}
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 pb-7 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+            />
+            <span className="pointer-events-none absolute bottom-3 right-3 text-sm text-slate-400">
+              {text.length} / {SOLUTION_MAX_LENGTH}
+            </span>
+          </div>
+          <button
+            onClick={() => void submit()}
+            disabled={!text.trim() || busy}
+            className={`${btnPrimary} mt-2 rounded-lg px-4 py-2`}
+          >
+            {busy ? 'Submitting…' : 'Submit solution'}
+          </button>
+          {error && <ErrorText className="mt-2">{error}</ErrorText>}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -375,7 +380,7 @@ export function HostLobby({ state, emit }: { state: SessionState; emit: Emit }) 
           <PresetBody state={state} emit={emit} fail={fail} />
         )}
 
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {error && <ErrorText className="mt-4">{error}</ErrorText>}
         <p className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-500">
           <span aria-hidden>🕐</span> You can leave this page — we&rsquo;ll bring you back here.
         </p>

@@ -3,6 +3,7 @@ import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode, Stepper } from './HostLobby';
 import { Modal } from './Modal';
+import { ErrorText } from './Announce';
 import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger } from './button';
 import {
   addSolution,
@@ -61,7 +62,7 @@ function CombineModal({
             </li>
           ))}
         </ul>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <ErrorText className="mt-3">{error}</ErrorText>}
         <div className="mt-5 flex justify-between gap-3">
           <button
             onClick={onCancel}
@@ -108,7 +109,7 @@ function DeleteDialog({
         </div>
         <h2 className="mt-3 text-lg font-semibold text-slate-900">Remove this Solution?</h2>
         <p className="mt-1 text-sm text-slate-500">This can&rsquo;t be undone after voting starts.</p>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {error && <ErrorText className="mt-2">{error}</ErrorText>}
         <div className="mt-5 flex justify-center gap-3">
           <button
             onClick={onCancel}
@@ -369,7 +370,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
             <span aria-hidden>ℹ️</span> Add at least one Solution to start voting.
           </p>
         )}
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {error && <ErrorText className="mt-4">{error}</ErrorText>}
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-sm text-slate-500">

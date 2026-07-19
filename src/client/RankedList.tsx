@@ -3,6 +3,7 @@ import type { SessionState } from '../shared/contract';
 import { rankedListText } from './ranked-list';
 import { downloadReportCsv } from './host-report';
 import { btnPrimary, btnSecondary } from './button';
+import { ErrorText } from './Announce';
 
 /** Circular average-confidence badge; "—" on null (zero-ballot close), never NaN. */
 function AvgBadge({ avg, big, green }: { avg: number | null; big?: boolean; green?: boolean }) {
@@ -156,7 +157,7 @@ export function RankedList({
             >
               ⬇️ Export CSV
             </button>
-            {csvError && <p className="mt-2 text-center text-sm text-red-600">{csvError}</p>}
+            {csvError && <ErrorText className="mt-2 text-center">{csvError}</ErrorText>}
           </div>
         )}
       </main>

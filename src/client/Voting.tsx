@@ -5,6 +5,7 @@ import { percentComplete } from './submit-solution';
 import { ProgressBar } from './HostLobby';
 import { btnPrimary, btnSecondary, btnNeutral, btnLink, btnGhost } from './button';
 import { Modal } from './Modal';
+import { ErrorText, LiveStatus } from './Announce';
 import {
   angleToScore,
   clearScores,
@@ -244,6 +245,8 @@ function AdjustSheet({
   );
 }
 
+const RESUMED_MSG = 'Voting resumed — picking up where you left off.';
+
 export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
   const deck = state.deck ?? [];
   // One read of the device-local scores seeds both the score map and the resumed banner.
@@ -254,6 +257,11 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
   });
   const [scores, setScores] = useState<Scores>(initial.saved);
   const resumed = initial.resumed;
+  // Injected after first paint: a live region that mounts with its text never announces.
+  const [resumedMsg, setResumedMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (initial.resumed) setResumedMsg(RESUMED_MSG);
+  }, []);
   // Rejoin-mid-vote bridge (#23, mock 09): saved scores → "Voting resumed" + Continue voting.
   const [bridge, setBridge] = useState(initial.resumed);
   const [mode, setMode] = useState<'swipe' | 'manual'>('swipe');
@@ -339,9 +347,11 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           </summary>
         </details>
 
+        <LiveStatus message={voted ? 'Your ballot is submitted.' : resumedMsg} />
+
         {resumed && !voted && !bridge && (
           <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
-            ✓ Voting resumed — picking up where you left off.
+            ✓ {RESUMED_MSG}
           </p>
         )}
 
@@ -391,7 +401,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           </div>
         ) : ballot === 'error' ? (
           <div className="mt-16 text-center">
-            <p className="text-red-600">Something went wrong submitting your ballot.</p>
+            <ErrorText>Something went wrong submitting your ballot.</ErrorText>
             <button
               onClick={() => void finish(scores)}
               className={`${btnPrimary} mt-4 rounded-lg px-6 py-2.5`}

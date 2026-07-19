@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from 'react';
 import type { ErrorCode } from '../shared/contract';
 import { btnPrimary, btnSecondary, btnLink, btnGhost, menuItem, tabIdle } from './button';
+import { ErrorText } from './Announce';
 import {
   activeSession,
   formatDate,
@@ -150,8 +151,8 @@ export function Home({
           </button>
         </div>
 
-        {openError && <p className="mt-4 text-sm text-red-600">{openError}</p>}
-        {error && !sessions && <p className="mt-4 text-sm text-red-600">Could not load your sessions. Retrying…</p>}
+        {openError && <ErrorText className="mt-4">{openError}</ErrorText>}
+        {error && !sessions && <ErrorText className="mt-4">Could not load your sessions. Retrying…</ErrorText>}
 
         {active && (
           <section className="mt-8">
