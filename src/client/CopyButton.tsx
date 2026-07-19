@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Check, Copy } from 'lucide-react';
 import { LiveStatus } from './Announce';
 
-/** Clipboard copy with textual "✓ Copied" feedback (issue #29). */
+/** Clipboard copy with "Copied" feedback (issue #29); copy/check icons baked in (issue #31). */
 export function CopyButton({
   text,
   label,
@@ -29,7 +30,15 @@ export function CopyButton({
         aria-label={ariaLabel}
         className={className}
       >
-        {copied ? '✓ Copied' : label}
+        {copied ? (
+          <>
+            <Check className="inline h-4 w-4" aria-hidden /> Copied
+          </>
+        ) : (
+          <>
+            <Copy className="inline h-4 w-4" aria-hidden /> {label}
+          </>
+        )}
       </button>
       <LiveStatus message={copied ? 'Copied to clipboard.' : null} />
     </>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Download } from 'lucide-react';
 import type { SessionState } from '../shared/contract';
 import { rankedListText } from './ranked-list';
 import { downloadReportCsv } from './host-report';
@@ -115,7 +116,7 @@ export function RankedList({
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <CopyButton
             text={rankedListText(state.problem, ranked)}
-            label="📋 Copy Ranked list"
+            label="Copy Ranked list"
             className={`${btnSecondary} rounded-lg border-indigo-300 px-5 py-2.5`}
           />
           <button
@@ -141,7 +142,7 @@ export function RankedList({
               onClick={() => void exportCsv()}
               className={`${btnSecondary} mt-3 w-full rounded-lg border-indigo-300 px-4 py-2.5`}
             >
-              ⬇️ Export CSV
+              <Download className="inline h-4 w-4" aria-hidden /> Export CSV
             </button>
             {csvError && <ErrorText className="mt-2 text-center">{csvError}</ErrorText>}
           </div>

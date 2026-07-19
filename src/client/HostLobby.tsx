@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check, Pencil, Trash2 } from 'lucide-react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete, submitSolution } from './submit-solution';
@@ -18,7 +19,7 @@ export function JoinCode({ code }: { code: string }) {
         </span>
         <CopyButton
           text={code}
-          label="📋 Copy"
+          label="Copy"
           ariaLabel="Copy join code"
           className={`${btnGhost} rounded border border-slate-200 px-2 py-0.5 text-sm`}
         />
@@ -75,7 +76,7 @@ function HostSubmit({ state, emit }: { state: SessionState; emit: Emit }) {
       {submitted ? (
         <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
           <div className="flex items-center gap-2 font-medium text-green-800">
-            <span aria-hidden>✓</span> Your submission is saved
+            <Check className="h-4 w-4 shrink-0" aria-hidden /> Your submission is saved
           </div>
           {(state.me.submissionText ?? text) && <p className="mt-1 text-green-900">{state.me.submissionText ?? text}</p>}
         </div>
@@ -221,7 +222,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
           <h2 className="text-lg font-semibold text-slate-900">Preset Deck</h2>
           {state.hostParticipates && (
             <span className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
-              ✓ You are participating
+              <Check className="h-4 w-4" aria-hidden /> You are participating
             </span>
           )}
         </div>
@@ -265,7 +266,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                     aria-label={`Edit ${d.text}`}
                     className={`${btnGhost} rounded border border-slate-200 px-2 py-1`}
                   >
-                    ✏️
+                    <Pencil className="h-4 w-4" aria-hidden />
                   </button>
                   <button
                     onClick={() => run(`delete:${d.id}`, deleteSolution(emit, d.id))}
@@ -274,7 +275,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                     aria-label={`Delete ${d.text}`}
                     className={`${btnGhostDanger} rounded border border-slate-200 px-2 py-1`}
                   >
-                    {busy === `delete:${d.id}` ? <Spinner /> : '🗑️'}
+                    {busy === `delete:${d.id}` ? <Spinner /> : <Trash2 className="h-4 w-4" aria-hidden />}
                   </button>
                 </span>
               </li>

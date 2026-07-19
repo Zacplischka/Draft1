@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowDown, ArrowUp, Check, ChevronRight } from 'lucide-react';
 import { AppHeader } from './Home';
 import { btnPrimary, btnNeutral, tabIdle, Spinner } from './button';
 import { ErrorText } from './Announce';
@@ -133,7 +134,12 @@ export function History({
                           className={`flex items-center gap-1 ${tabIdle}`}
                         >
                           {c.label}
-                          {sort.key === c.key && <span aria-hidden>{sort.dir === 'asc' ? '↑' : '↓'}</span>}
+                          {sort.key === c.key &&
+                            (sort.dir === 'asc' ? (
+                              <ArrowUp className="h-3.5 w-3.5" aria-hidden />
+                            ) : (
+                              <ArrowDown className="h-3.5 w-3.5" aria-hidden />
+                            ))}
                         </button>
                       </th>
                     ))}
@@ -159,7 +165,7 @@ export function History({
                             </span>
                           ) : (
                             <span className="rounded-full bg-green-100 px-3 py-1 font-medium text-green-700">
-                              ✓ Completed
+                              <Check className="inline h-3.5 w-3.5" aria-hidden /> Completed
                             </span>
                           )}
                         </td>
@@ -173,7 +179,7 @@ export function History({
                               onClick={() => onOpenReport(s.id)}
                               className={`${btnNeutral} rounded-lg px-3 py-1.5`}
                             >
-                              Open report ›
+                              Open report <ChevronRight className="inline h-4 w-4" aria-hidden />
                             </button>
                           )}
                         </td>

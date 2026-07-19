@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import { SCORE_MAX, SCORE_MIN, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete } from './submit-solution';
@@ -208,7 +209,7 @@ function AdjustSheet({
     >
       <div className="relative rounded-t-3xl bg-white p-6 text-center shadow-xl sm:rounded-3xl">
         <button onClick={onReswipe} aria-label="Close" className={`${btnGhost} absolute right-4 top-4`}>
-          ✕
+          <X className="h-4 w-4" aria-hidden />
         </button>
         <h2 className="text-lg font-semibold text-slate-900">Adjust your Confidence score</h2>
         <div className="mt-2 text-6xl font-semibold" style={{ color: scoreColor(score) }}>
@@ -341,7 +342,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
             <span aria-hidden>❓</span>
             <span className="min-w-0 flex-1 truncate group-open:whitespace-normal">{state.problem}</span>
             <span aria-hidden className="text-slate-400 transition-transform group-open:rotate-180">
-              ⌄
+              <ChevronDown className="h-4 w-4" />
             </span>
           </summary>
         </details>
@@ -350,14 +351,14 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
 
         {resumed && !voted && !bridge && (
           <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
-            ✓ {RESUMED_MSG}
+            <Check className="inline h-4 w-4" aria-hidden /> {RESUMED_MSG}
           </p>
         )}
 
         {bridge && !voted && ballot === 'idle' ? (
           <div className="mt-16 text-center">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
-              ✓
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+              <Check className="h-8 w-8" aria-hidden />
             </span>
             <h1 className="mt-4 text-2xl font-semibold text-slate-900">Voting resumed</h1>
             <p className="mt-2 text-slate-500">Your previous scores are saved on this device.</p>
@@ -376,8 +377,8 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
           </div>
         ) : voted || ballot === 'busy' ? (
           <div className="mt-16 text-center">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
-              ✓
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+              <Check className="h-8 w-8" aria-hidden />
             </span>
             <h1 className="mt-4 text-2xl font-semibold text-slate-900">
               {ballot === 'busy' ? 'Submitting your ballot…' : 'Your ballot is submitted'}

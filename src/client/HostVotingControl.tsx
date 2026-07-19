@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import type { SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode } from './HostLobby';
@@ -121,7 +122,7 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
               aria-label="Close"
               className={`${btnGhost} float-right -mr-2 -mt-2`}
             >
-              ✕
+              <X className="h-4 w-4" aria-hidden />
             </button>
             <span
               aria-hidden

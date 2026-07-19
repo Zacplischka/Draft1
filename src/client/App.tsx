@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
 import type { Ack, ErrorCode, Profile, SessionState } from '../shared/contract';
 import { getToken, signOut } from './auth';
@@ -408,7 +409,7 @@ export default function App() {
                   aria-label="Close"
                   className={btnGhost}
                 >
-                  ✕
+                  <X className="h-4 w-4" aria-hidden />
                 </button>
               </div>
               <ProfileForm
