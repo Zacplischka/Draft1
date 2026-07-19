@@ -1,0 +1,33 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # ponytail: no test gate — npm test needs embedded Postgres; add a test job if deploys start breaking
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://dqdelrwrbjzprtwbttwj.supabase.co
+          # Anon key is public by design (see README) — safe to commit.
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZGVscndyYmp6cHJ0d2J0dHdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzcyNzAsImV4cCI6MjA5OTk1MzI3MH0.QnMlFoWS0YNhwC-1q3qINsGpcuPKi8d-1wN9xNJmnqc
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: >
+          gcloud run deploy group-decision --source .
+          --project=mypickle-486702 --region=australia-southeast1 --quiet
