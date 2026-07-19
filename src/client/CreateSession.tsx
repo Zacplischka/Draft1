@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { CAP_DEFAULT, CAP_MAX, CAP_MIN, PROBLEM_MAX_LENGTH, SOLUTION_MAX_LENGTH, type Workflow } from '../shared/contract';
 import { createSession, SESSION_ID_KEY, validateDetails } from './create-session';
-import { btnPrimary, btnSecondary, btnLink, btnGhost } from './button';
+import { btnPrimary, btnSecondary, btnLink, btnGhost, BusyButton } from './button';
 import { ErrorText } from './Announce';
 
 const WORKFLOWS: { value: Workflow; label: string; blurb: string }[] = [
@@ -235,13 +235,15 @@ export function CreateSession({
               </div>
             </dl>
             {error && <ErrorText className="mt-3">{error}</ErrorText>}
-            <button
+            <BusyButton
               onClick={() => void create()}
-              disabled={invalid || submitting}
+              busy={submitting}
+              busyLabel="Creating…"
+              disabled={invalid}
               className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-2.5`}
             >
-              {submitting ? 'Creating…' : 'Create session'}
-            </button>
+              Create session
+            </BusyButton>
           </aside>
         </div>
       </main>

@@ -4,7 +4,7 @@ import type { Emit } from './create-session';
 import { JoinCode, Stepper } from './HostLobby';
 import { Modal } from './Modal';
 import { ErrorText } from './Announce';
-import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger } from './button';
+import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger, BusyButton } from './button';
 import {
   addSolution,
   combineSolutions,
@@ -70,13 +70,15 @@ function CombineModal({
           >
             Cancel
           </button>
-          <button
+          <BusyButton
             onClick={() => onConfirm(text.trim())}
-            disabled={!text.trim() || busy}
+            busy={busy}
+            busyLabel="Combining…"
+            disabled={!text.trim()}
             className={`${btnPrimary} rounded-lg px-6 py-2.5`}
           >
             Combine
-          </button>
+          </BusyButton>
         </div>
       </div>
     </Modal>
@@ -117,13 +119,14 @@ function DeleteDialog({
           >
             Cancel
           </button>
-          <button
+          <BusyButton
             onClick={onConfirm}
-            disabled={busy}
+            busy={busy}
+            busyLabel="Removing…"
             className={`${btnDanger} rounded-lg px-6 py-2.5`}
           >
             Remove
-          </button>
+          </BusyButton>
         </div>
       </div>
     </Modal>
@@ -139,7 +142,8 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
+  // Tagged so only the button that started the pending op shows its spinner (issue #30).
+  const [busy, setBusy] = useState<'add' | 'edit' | 'combine' | 'remove' | 'start' | null>(null);
   const [emptyDeck, setEmptyDeck] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,12 +153,12 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
   const fail = (err: unknown) =>
     setError(`Something went wrong (${err instanceof Error ? err.message : 'unknown'}). Please try again.`);
 
-  function run(op: Promise<unknown>, then?: () => void) {
-    setBusy(true);
+  function run(tag: 'add' | 'edit' | 'combine' | 'remove', op: Promise<unknown>, then?: () => void) {
+    setBusy(tag);
     setError(null);
     op.then(then)
       .catch(fail)
-      .finally(() => setBusy(false));
+      .finally(() => setBusy(null));
   }
   function toggle(id: string) {
     setSelected((prev) => {
@@ -167,7 +171,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
   function add() {
     const text = draft.trim();
     if (!text) return;
-    run(addSolution(emit, text), () => {
+    run('add', addSolution(emit, text), () => {
       setDraft('');
       setEmptyDeck(false);
     });
@@ -175,10 +179,11 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
   function saveEdit(id: string) {
     const text = editText.trim();
     setEditingId(null);
-    if (text) run(editSolution(emit, id, text));
+    if (text) run('edit', editSolution(emit, id, text));
   }
   function confirmCombine(text: string) {
     run(
+      'combine',
       combineSolutions(
         emit,
         combineSources!.map((r) => r.id),
@@ -192,10 +197,10 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
     );
   }
   function confirmDelete(id: string) {
-    run(deleteSolution(emit, id), () => setDeleteTarget(null));
+    run('remove', deleteSolution(emit, id), () => setDeleteTarget(null));
   }
   async function start() {
-    setBusy(true);
+    setBusy('start');
     setError(null);
     try {
       // Disabled at zero locally, but a raced empty deck still acks empty-deck — surface it.
@@ -203,7 +208,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
     } catch (err) {
       fail(err);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -331,16 +336,18 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
           {selectedRows.length > 0 && (
             <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-100 px-4 py-3">
               <span className="text-sm font-medium text-slate-700">{selectedRows.length} selected</span>
-              <button
+              <BusyButton
                 onClick={() => {
                   setError(null);
                   setCombineSources(selectedRows);
                 }}
-                disabled={selectedRows.length < 2 || busy}
+                busy={busy === 'combine'}
+                busyLabel="Combining…"
+                disabled={selectedRows.length < 2 || !!busy}
                 className={`${btnPrimary} rounded-lg px-4 py-2`}
               >
                 Combine selected
-              </button>
+              </BusyButton>
             </div>
           )}
 
@@ -355,13 +362,15 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
               placeholder="Add a solution"
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
             />
-            <button
+            <BusyButton
               onClick={add}
-              disabled={!draft.trim() || busy}
+              busy={busy === 'add'}
+              busyLabel="Adding…"
+              disabled={!draft.trim() || !!busy}
               className={`${btnSecondary} shrink-0 rounded-lg border-indigo-600 px-3 py-2 text-sm`}
             >
               Add solution
-            </button>
+            </BusyButton>
           </div>
         </div>
 
@@ -376,20 +385,22 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
           <p className="flex items-center gap-2 text-sm text-slate-500">
             <span aria-hidden>🕐</span> You can leave this page — we&rsquo;ll bring you back here.
           </p>
-          <button
+          <BusyButton
             onClick={() => void start()}
-            disabled={deck.length === 0 || busy}
+            busy={busy === 'start'}
+            busyLabel="Starting…"
+            disabled={deck.length === 0 || !!busy}
             className={`${btnPrimary} rounded-lg px-6 py-3`}
           >
             Start voting
-          </button>
+          </BusyButton>
         </div>
       </main>
 
       {combineSources && (
         <CombineModal
           sources={combineSources}
-          busy={busy}
+          busy={busy === 'combine'}
           error={error}
           onCancel={() => setCombineSources(null)}
           onConfirm={confirmCombine}
@@ -397,7 +408,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
       )}
       {deleteTarget && (
         <DeleteDialog
-          busy={busy}
+          busy={busy === 'remove'}
           error={error}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => confirmDelete(deleteTarget.id)}

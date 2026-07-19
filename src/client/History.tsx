@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AppHeader } from './Home';
-import { btnPrimary, btnNeutral, tabIdle } from './button';
+import { btnPrimary, btnNeutral, tabIdle, Spinner } from './button';
 import { ErrorText } from './Announce';
 import {
   filterSessions,
@@ -75,7 +75,9 @@ export function History({
           error ? (
             <ErrorText className="mt-10 text-center">Could not load your sessions. Retrying…</ErrorText>
           ) : (
-            <p className="mt-10 text-center text-slate-400">Loading…</p>
+            <p className="mt-10 flex items-center justify-center gap-3 text-slate-400">
+              <Spinner className="h-5 w-5" /> Loading…
+            </p>
           )
         ) : sessions.length === 0 ? (
           <div className="mx-auto mt-10 max-w-sm text-center">

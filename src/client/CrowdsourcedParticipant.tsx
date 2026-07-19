@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { participantView, percentComplete, submitSolution } from './submit-solution';
-import { btnPrimary } from './button';
+import { btnPrimary, BusyButton } from './button';
 import { ErrorText, LiveStatus } from './Announce';
 import { ProgressBar } from './ProgressBar';
 
@@ -136,13 +136,15 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
                   {text.length} / {SOLUTION_MAX_LENGTH}
                 </span>
               </div>
-              <button
+              <BusyButton
                 onClick={() => void submit()}
-                disabled={!text.trim() || busy}
+                busy={busy}
+                busyLabel="Submitting…"
+                disabled={!text.trim()}
                 className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-2.5`}
               >
-                {busy ? 'Submitting…' : 'Submit solution'}
-              </button>
+                Submit solution
+              </BusyButton>
               {error && <ErrorText className="mt-3">{error}</ErrorText>}
               <p className="mt-4 text-center text-sm text-slate-500">🔒 You can submit once.</p>
             </>

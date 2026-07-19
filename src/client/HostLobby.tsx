@@ -3,7 +3,7 @@ import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete, submitSolution } from './submit-solution';
 import { addSolution, beginCuration, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
-import { btnPrimary, btnSecondary, btnLink, btnGhost, btnGhostDanger } from './button';
+import { btnPrimary, btnSecondary, btnLink, btnGhost, btnGhostDanger, BusyButton, Spinner } from './button';
 import { ErrorText, LiveStatus } from './Announce';
 import { ProgressBar } from './ProgressBar';
 import { CopyButton } from './CopyButton';
@@ -94,13 +94,15 @@ function HostSubmit({ state, emit }: { state: SessionState; emit: Emit }) {
               {text.length} / {SOLUTION_MAX_LENGTH}
             </span>
           </div>
-          <button
+          <BusyButton
             onClick={() => void submit()}
-            disabled={!text.trim() || busy}
+            busy={busy}
+            busyLabel="Submitting…"
+            disabled={!text.trim()}
             className={`${btnPrimary} mt-2 rounded-lg px-4 py-2`}
           >
-            {busy ? 'Submitting…' : 'Submit solution'}
-          </button>
+            Submit solution
+          </BusyButton>
           {error && <ErrorText className="mt-2">{error}</ErrorText>}
         </div>
       )}
@@ -150,18 +152,19 @@ function CrowdsourcedBody({ state, emit, fail }: { state: SessionState; emit: Em
         <p className="flex flex-1 items-center gap-2 rounded-xl bg-slate-200/60 px-4 py-3 text-sm text-slate-600">
           <span aria-hidden>ℹ️</span> At least one Solution is required to start the vote.
         </p>
-        <button
+        <BusyButton
           onClick={() => {
             setBusy(true);
             beginCuration(emit)
               .catch(fail)
               .finally(() => setBusy(false));
           }}
-          disabled={busy}
+          busy={busy}
+          busyLabel="Beginning…"
           className={`${btnPrimary} rounded-lg px-6 py-3`}
         >
           Begin curation
-        </button>
+        </BusyButton>
       </div>
     </>
   );
@@ -171,20 +174,21 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  const [busy, setBusy] = useState(false);
+  // Tagged so only the button that started the pending op shows its spinner (issue #30).
+  const [busy, setBusy] = useState<'add' | 'edit' | 'start' | `delete:${string}` | null>(null);
   const [emptyDeck, setEmptyDeck] = useState(false);
   const deck = state.deck ?? [];
   const { count, cap } = state.participants;
   const pct = percentComplete(count, cap);
 
-  function run(op: Promise<unknown>) {
-    setBusy(true);
-    op.catch(fail).finally(() => setBusy(false));
+  function run(tag: 'edit' | `delete:${string}`, op: Promise<unknown>) {
+    setBusy(tag);
+    op.catch(fail).finally(() => setBusy(null));
   }
   function add() {
     const text = draft.trim();
     if (!text) return;
-    setBusy(true);
+    setBusy('add');
     // Draft and empty-deck notice clear only on a successful ack — a failed add keeps both.
     addSolution(emit, text)
       .then(() => {
@@ -192,21 +196,21 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
         setEmptyDeck(false);
       })
       .catch(fail)
-      .finally(() => setBusy(false));
+      .finally(() => setBusy(null));
   }
   function saveEdit(id: string) {
     const text = editText.trim();
     setEditingId(null);
-    if (text) run(editSolution(emit, id, text));
+    if (text) run('edit', editSolution(emit, id, text));
   }
   async function start() {
-    setBusy(true);
+    setBusy('start');
     try {
       setEmptyDeck((await startVoting(emit)) === 'empty-deck');
     } catch (err) {
       fail(err);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -264,12 +268,13 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                     ✏️
                   </button>
                   <button
-                    onClick={() => run(deleteSolution(emit, d.id))}
-                    disabled={busy}
+                    onClick={() => run(`delete:${d.id}`, deleteSolution(emit, d.id))}
+                    disabled={!!busy}
+                    aria-busy={busy === `delete:${d.id}` || undefined}
                     aria-label={`Delete ${d.text}`}
                     className={`${btnGhostDanger} rounded border border-slate-200 px-2 py-1`}
                   >
-                    🗑️
+                    {busy === `delete:${d.id}` ? <Spinner /> : '🗑️'}
                   </button>
                 </span>
               </li>
@@ -287,13 +292,15 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
             placeholder="Add a solution"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
           />
-          <button
+          <BusyButton
             onClick={add}
-            disabled={!draft.trim() || busy}
+            busy={busy === 'add'}
+            busyLabel="Adding…"
+            disabled={!draft.trim() || !!busy}
             className={`${btnSecondary} shrink-0 rounded-lg border-indigo-600 px-3 py-2 text-sm`}
           >
             Add solution
-          </button>
+          </BusyButton>
         </div>
       </div>
 
@@ -313,13 +320,15 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
           <span aria-hidden>ℹ️</span> Add at least one Solution to start voting.
         </p>
       )}
-      <button
+      <BusyButton
         onClick={() => void start()}
-        disabled={busy}
+        busy={busy === 'start'}
+        busyLabel="Starting…"
+        disabled={!!busy}
         className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-3`}
       >
         Start voting
-      </button>
+      </BusyButton>
     </>
   );
 }

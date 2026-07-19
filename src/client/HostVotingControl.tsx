@@ -3,7 +3,7 @@ import type { SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode } from './HostLobby';
 import { closeVoting, initials } from './host-voting';
-import { btnSecondary, btnDangerOutline, btnGhost } from './button';
+import { btnSecondary, btnDangerOutline, btnGhost, BusyButton } from './button';
 import { ErrorText } from './Announce';
 
 function StatCard({ icon, tint, value, label }: { icon: string; tint: string; value: string; label: string }) {
@@ -141,13 +141,14 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
               >
                 Keep voting
               </button>
-              <button
+              <BusyButton
                 onClick={close}
-                disabled={busy}
+                busy={busy}
+                busyLabel="Closing…"
                 className={`${btnDangerOutline} flex-1 rounded-lg px-4 py-2.5`}
               >
-                {busy ? 'Closing…' : 'Close voting'}
-              </button>
+                Close voting
+              </BusyButton>
             </div>
           </div>
         </div>

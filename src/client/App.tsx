@@ -21,7 +21,7 @@ import { Report } from './Report';
 import { everyoneVotedAdvance } from './host-voting';
 import { SESSION_ID_KEY } from './create-session';
 import { landedRoute, rejoinSession } from './reconnect';
-import { btnNeutral, btnGhost } from './button';
+import { btnNeutral, btnGhost, Spinner } from './button';
 
 type Route =
   | 'loading'
@@ -208,7 +208,11 @@ export default function App() {
 
   function screen() {
     if (route === 'loading') {
-      return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>;
+      return (
+        <div className="flex min-h-screen items-center justify-center gap-3 text-slate-400">
+          <Spinner className="h-5 w-5" /> Loading…
+        </div>
+      );
     }
     if (route === 'signed-out') {
       return (
