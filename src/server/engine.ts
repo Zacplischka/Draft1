@@ -17,6 +17,7 @@ import {
   type Ack,
   type ErrorCode,
   type HostReport,
+  type SessionCancelled,
   type SessionState,
   type SessionSummary,
 } from '../shared/contract';
@@ -509,6 +510,38 @@ export function createRoomServer(pool: Pool, verifyToken: VerifyToken): RoomServ
       }
       await joinRoom(socket, s.id);
       return { sessionId: s.id };
+    });
+
+    handle(socket, 'session:cancel', async () => {
+      const sessionId = sessionOf(socket);
+      await tx(async (c) => {
+        const { rows } = await c.query('select host_id, phase from sessions where id = $1 for update', [sessionId]);
+        const session = rows[0];
+        if (!session) throw new SeamError('not-found');
+        if (session.host_id !== userId) throw new SeamError('not-host');
+        if (session.phase === 'results') throw new SeamError('bad-phase');
+
+        await c.query('delete from ballot_scores where ballot_id in (select id from ballots where session_id = $1)', [
+          sessionId,
+        ]);
+        await c.query('delete from ballots where session_id = $1', [sessionId]);
+        await c.query('delete from solutions where session_id = $1', [sessionId]);
+        await c.query('delete from memberships where session_id = $1', [sessionId]);
+        await c.query('delete from sessions where id = $1', [sessionId]);
+      });
+
+      const sockets = await io.in(sessionId).fetchSockets();
+      await Promise.all(
+        sockets.map(async (roomSocket) => {
+          roomSocket.emit('session:cancelled', {
+            sessionId,
+            isHost: roomSocket.data.userId === userId,
+          } satisfies SessionCancelled);
+          await roomSocket.leave(sessionId);
+          if (roomSocket.data.sessionId === sessionId) delete roomSocket.data.sessionId;
+        }),
+      );
+      return {};
     });
 
     handle(socket, 'solution:submit', async (p) => {

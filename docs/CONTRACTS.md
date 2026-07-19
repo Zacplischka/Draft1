@@ -7,7 +7,7 @@ The single test seam (see `docs/SPEC.md` Testing Decisions). Every ticket implem
 - Socket.IO. The handshake carries `{ token }`; the server verifies it via Supabase before any handler runs (the stubbed boundary in tests). Client-supplied identity is never read. **Handshake rejection**: a bad/expired token fails the connection itself — Socket.IO `connect_error` with message `'unauthorized'` (no ack envelope exists yet). Clients retry with a freshly-read token; if that too is rejected, treat as signed out and route to sign-in — never loop silently.
 - **No rate limiting or abuse controls in scope** (rooms cap at ~100; all events require a Google-authenticated token). Revisit only if abuse is observed in production.
 - Every client→server event acks `{ ok: true, ...data }` or `{ error: ErrorCode }`.
-- After every state mutation, and on (re)join, the server broadcasts a role-filtered `session:state` snapshot to the room. No granular diff events exist.
+- After every state mutation, and on (re)join, the server broadcasts a role-filtered `session:state` snapshot to the room. Cancellation is the exception: the deleted session has no snapshot, so live members receive the final `session:cancelled` event instead. No granular diff events exist.
 - There is **no leave event**. "Leave session" / "Done" in the UI is client navigation; Membership is permanent. A member who leaves for good can therefore hold up everyone-voted auto-completion — the host's `voting:close` is the escape hatch.
 - **The host is a member**: counted in `participants.count` and against `cap`. `hostParticipates` affects only the submit/vote denominators, never seating.
 - **Shared contract module**: the types and constants here (ErrorCode, SessionState, enum lists, suppression N, consensus thresholds) live in ONE shared module created by the walking skeleton; server and client both import it — no hand-duplication.
@@ -63,6 +63,9 @@ type ErrorCode =
                    //   returns the current snapshot; clients store sessionId from the ack.
                    //   A NON-member's sessionId join acks `not-found` even when the id
                    //   resolves — don't leak session existence
+'session:cancel'   {}                             // host; lobby, curation, or voting. Deletes
+                                                  // the session and every child row in one
+                                                  // transaction. Results → bad-phase
 'curation:start'   {}                             // host, crowdsourced: lobby → curation;
                                                   // closes further submissions. Legal with
                                                   // ZERO solutions — the host recovers via
@@ -100,6 +103,7 @@ type ErrorCode =
 | `session:join` (code, existing member) | any phase the code resolves (≠ results) | member |
 | `session:preview` | lobby, curation, voting | anyone with profile |
 | `session:join` (sessionId rejoin) | any | existing member |
+| `session:cancel` | lobby, curation, voting | host |
 | `solution:submit` | lobby (crowdsourced) | participant¹, once |
 | `solution:add` / `edit` / `delete` / `combine` | preset: lobby · crowdsourced: curation | host |
 | `curation:start` | lobby (crowdsourced) | host |
@@ -113,6 +117,10 @@ type ErrorCode =
 
 ```ts
 'session:state'    SessionState
+'session:cancelled' { sessionId: string, isHost: boolean }
+                                                  // final event to every live member; clear
+                                                  // the rejoin key and land on Home. Non-host
+                                                  // clients show the cancellation toast
 
 type SessionState = {
   sessionId: string;

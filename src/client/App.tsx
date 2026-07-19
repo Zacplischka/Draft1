@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
-import type { Ack, ErrorCode, Profile, SessionState } from '../shared/contract';
+import type { Ack, ErrorCode, Profile, SessionCancelled, SessionState } from '../shared/contract';
 import { getToken, signOut } from './auth';
 import { connectSocket } from './socket';
 import { SignIn } from './SignIn';
@@ -44,12 +44,26 @@ export default function App() {
   const [editing, setEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const activeSessionId = useRef<string | null>(null);
   const [authEpoch, setAuthEpoch] = useState(0); // bumped after dev sign-in to re-run the effect
   const prevSnapshot = useRef<SessionState | null>(null);
   const coldRejoin = useRef<string | null>(null); // sessionId whose first snapshot decides the cold-load landing (#23)
   const [conn, setConn] = useState<'online' | 'offline' | 'restored'>('online');
   const [everyoneVoted, setEveryoneVoted] = useState(false); // "opening the Ranked list…" toast
+  const [sessionCancelled, setSessionCancelled] = useState(false);
   const [reportBack, setReportBack] = useState<Route>('session'); // where the report placeholder returns to
+
+  function forgetSession() {
+    activeSessionId.current = null;
+    localStorage.removeItem(SESSION_ID_KEY);
+    setSessionId(null);
+    setSessionState(null);
+    setRoute('home');
+  }
+
+  useEffect(() => {
+    activeSessionId.current = sessionId;
+  }, [sessionId]);
 
   useEffect(() => {
     let disposed = false;
@@ -98,6 +112,20 @@ export default function App() {
           setRoute('session');
         }
         setSessionState(s);
+      });
+      socket.on('session:cancelled', ({ sessionId: cancelledId, isHost }: SessionCancelled) => {
+        if (
+          disposed ||
+          (activeSessionId.current !== cancelledId && localStorage.getItem(SESSION_ID_KEY) !== cancelledId)
+        ) {
+          return;
+        }
+        forgetSession();
+        if (isHost) return;
+        setSessionCancelled(true);
+        setTimeout(() => {
+          if (!disposed) setSessionCancelled(false);
+        }, 4000);
       });
       // Auto-rejoin the stored session; a stale id clears the key and lands home (#23).
       async function resume(id: string, kind: 'cold' | 'reconnect') {
@@ -450,6 +478,11 @@ export default function App() {
     <>
       {screen()}
       {chip}
+      {sessionCancelled && (
+        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 shadow-lg">
+          <span aria-hidden>ℹ️</span> The host cancelled this session
+        </div>
+      )}
     </>
   );
 }

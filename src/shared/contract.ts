@@ -38,6 +38,8 @@ export type SessionState = {
   results?: { ranked: { solutionId: string; text: string; avg: number | null }[] };
 };
 
+export type SessionCancelled = { sessionId: string; isHost: boolean };
+
 // GET /api/sessions — ALL sessions of the authenticated host, live and completed (docs/CONTRACTS.md).
 export type SessionSummary = {
   id: string;

@@ -28,6 +28,8 @@ export const defaultCombinedText = (texts: string[]) => texts.join(' / ');
 /** Always legal, even with zero submissions — empty-deck gates only voting:start (contract). */
 export const beginCuration = (emit: Emit) => mustAck(emit, 'curation:start', {});
 
+export const cancelSession = (emit: Emit) => mustAck(emit, 'session:cancel', {});
+
 /** empty-deck is an expected inline state (mock 06's "at least one Solution"), not a crash. */
 export async function startVoting(emit: Emit): Promise<'started' | 'empty-deck'> {
   const ack = (await emit('voting:start', {})) as Ack;
