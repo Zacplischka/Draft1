@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SessionState } from '../shared/contract';
 import { rankedListText } from './ranked-list';
 import { downloadReportCsv } from './host-report';
+import { btnPrimary, btnSecondary } from './button';
 
 /** Circular average-confidence badge; "—" on null (zero-ballot close), never NaN. */
 function AvgBadge({ avg, big, green }: { avg: number | null; big?: boolean; green?: boolean }) {
@@ -126,13 +127,13 @@ export function RankedList({
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
             onClick={copy}
-            className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+            className={`${btnSecondary} rounded-lg border-indigo-300 px-5 py-2.5`}
           >
             {copied ? '✓ Copied' : '📋 Copy Ranked list'}
           </button>
           <button
             onClick={onDone}
-            className="rounded-lg bg-indigo-600 px-8 py-2.5 font-medium text-white hover:bg-indigo-700"
+            className={`${btnPrimary} rounded-lg px-8 py-2.5`}
           >
             Done
           </button>
@@ -145,13 +146,13 @@ export function RankedList({
             </p>
             <button
               onClick={onOpenReport}
-              className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700"
+              className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-2.5`}
             >
               📊 Open Host Report
             </button>
             <button
               onClick={() => void exportCsv()}
-              className="mt-3 w-full rounded-lg border border-indigo-300 px-4 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+              className={`${btnSecondary} mt-3 w-full rounded-lg border-indigo-300 px-4 py-2.5`}
             >
               ⬇️ Export CSV
             </button>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode, Stepper } from './HostLobby';
+import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger } from './button';
 import {
   addSolution,
   combineSolutions,
@@ -33,7 +34,7 @@ function CombineModal({
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Combine {sources.length} Solutions</h2>
-          <button onClick={onCancel} aria-label="Close" className="text-slate-400 hover:text-slate-600">
+          <button onClick={onCancel} aria-label="Close" className={btnGhost}>
             ✕
           </button>
         </div>
@@ -63,14 +64,14 @@ function CombineModal({
         <div className="mt-5 flex justify-between gap-3">
           <button
             onClick={onCancel}
-            className="rounded-lg border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+            className={`${btnNeutral} rounded-lg px-5 py-2.5`}
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(text.trim())}
             disabled={!text.trim() || busy}
-            className="rounded-lg bg-indigo-600 px-6 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+            className={`${btnPrimary} rounded-lg px-6 py-2.5`}
           >
             Combine
           </button>
@@ -97,7 +98,7 @@ function DeleteDialog({
         <button
           onClick={onCancel}
           aria-label="Close"
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+          className={`${btnGhost} absolute right-4 top-4`}
         >
           ✕
         </button>
@@ -110,14 +111,14 @@ function DeleteDialog({
         <div className="mt-5 flex justify-center gap-3">
           <button
             onClick={onCancel}
-            className="rounded-lg border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+            className={`${btnNeutral} rounded-lg px-5 py-2.5`}
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-lg bg-red-600 px-6 py-2.5 font-medium text-white hover:bg-red-700 disabled:bg-slate-300"
+            className={`${btnDanger} rounded-lg px-6 py-2.5`}
           >
             Remove
           </button>
@@ -271,13 +272,13 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                     />
                     <button
                       onClick={() => saveEdit(d.id)}
-                      className="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                      className={`${btnLink} shrink-0 text-sm`}
                     >
                       Save
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="shrink-0 text-sm text-slate-400 hover:text-slate-600"
+                      className={`${btnGhost} shrink-0 text-sm`}
                     >
                       Cancel
                     </button>
@@ -304,7 +305,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                           setEditText(d.text);
                         }}
                         aria-label={`Edit ${d.text}`}
-                        className="rounded border border-slate-200 px-2 py-1 text-slate-400 hover:text-slate-600"
+                        className={`${btnGhost} rounded border border-slate-200 px-2 py-1`}
                       >
                         ✏️
                       </button>
@@ -314,7 +315,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                           setDeleteTarget(d);
                         }}
                         aria-label={`Delete ${d.text}`}
-                        className="rounded border border-slate-200 px-2 py-1 text-slate-400 hover:text-red-600"
+                        className={`${btnGhostDanger} rounded border border-slate-200 px-2 py-1`}
                       >
                         🗑️
                       </button>
@@ -334,7 +335,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
                   setCombineSources(selectedRows);
                 }}
                 disabled={selectedRows.length < 2 || busy}
-                className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+                className={`${btnPrimary} rounded-lg px-4 py-2`}
               >
                 Combine selected
               </button>
@@ -355,7 +356,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
             <button
               onClick={add}
               disabled={!draft.trim() || busy}
-              className="shrink-0 rounded-lg border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:border-slate-300 disabled:text-slate-400"
+              className={`${btnSecondary} shrink-0 rounded-lg border-indigo-600 px-3 py-2 text-sm`}
             >
               Add solution
             </button>
@@ -376,7 +377,7 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
           <button
             onClick={() => void start()}
             disabled={deck.length === 0 || busy}
-            className="rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+            className={`${btnPrimary} rounded-lg px-6 py-3`}
           >
             Start voting
           </button>

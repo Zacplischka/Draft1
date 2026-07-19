@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { CAP_DEFAULT, CAP_MAX, CAP_MIN, PROBLEM_MAX_LENGTH, SOLUTION_MAX_LENGTH, type Workflow } from '../shared/contract';
 import { createSession, SESSION_ID_KEY, validateDetails } from './create-session';
+import { btnPrimary, btnSecondary, btnLink, btnGhost } from './button';
 
 const WORKFLOWS: { value: Workflow; label: string; blurb: string }[] = [
   {
@@ -77,7 +78,7 @@ export function CreateSession({
         <span className="font-semibold text-slate-900">🗳️ Group Decision</span>
       </header>
       <main className="mx-auto max-w-4xl p-6">
-        <button onClick={onBack} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+        <button onClick={onBack} className={`${btnLink} text-sm`}>
           &lsaquo; Sessions
         </button>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Create session</h1>
@@ -154,7 +155,7 @@ export function CreateSession({
                       <button
                         onClick={() => setSolutions(solutions.filter((_, j) => j !== i))}
                         aria-label={`Remove ${text}`}
-                        className="rounded border border-slate-200 px-2 text-slate-400 hover:text-slate-600"
+                        className={`${btnGhost} rounded border border-slate-200 px-2`}
                       >
                         ✕
                       </button>
@@ -175,7 +176,7 @@ export function CreateSession({
                   <button
                     onClick={addSolution}
                     disabled={!draft.trim()}
-                    className="shrink-0 rounded-lg border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:border-slate-300 disabled:text-slate-400"
+                    className={`${btnSecondary} shrink-0 rounded-lg border-indigo-600 px-3 py-2 text-sm`}
                   >
                     Add solution
                   </button>
@@ -234,7 +235,7 @@ export function CreateSession({
             <button
               onClick={() => void create()}
               disabled={invalid || submitting}
-              className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+              className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-2.5`}
             >
               {submitting ? 'Creating…' : 'Create session'}
             </button>

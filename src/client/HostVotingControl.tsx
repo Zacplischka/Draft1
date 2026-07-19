@@ -3,6 +3,7 @@ import type { SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode } from './HostLobby';
 import { closeVoting, initials } from './host-voting';
+import { btnSecondary, btnDangerOutline, btnGhost } from './button';
 
 function StatCard({ icon, tint, value, label }: { icon: string; tint: string; value: string; label: string }) {
   return (
@@ -102,7 +103,7 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             onClick={() => setConfirming(true)}
-            className="rounded-lg border border-red-300 px-5 py-2.5 font-medium text-red-600 hover:bg-red-50"
+            className={`${btnDangerOutline} rounded-lg px-5 py-2.5`}
           >
             🚫 Close voting
           </button>
@@ -117,7 +118,7 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
             <button
               onClick={() => setConfirming(false)}
               aria-label="Close"
-              className="float-right -mr-2 -mt-2 text-slate-400 hover:text-slate-600"
+              className={`${btnGhost} float-right -mr-2 -mt-2`}
             >
               ✕
             </button>
@@ -135,14 +136,14 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setConfirming(false)}
-                className="flex-1 rounded-lg border border-indigo-300 px-4 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+                className={`${btnSecondary} flex-1 rounded-lg border-indigo-300 px-4 py-2.5`}
               >
                 Keep voting
               </button>
               <button
                 onClick={close}
                 disabled={busy}
-                className="flex-1 rounded-lg border border-red-300 px-4 py-2.5 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                className={`${btnDangerOutline} flex-1 rounded-lg px-4 py-2.5`}
               >
                 {busy ? 'Closing…' : 'Close voting'}
               </button>

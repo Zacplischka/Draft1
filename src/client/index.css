@@ -1,1 +1,25 @@
 @import 'tailwindcss';
+
+@layer base {
+  /* Tailwind v4 preflight resets button cursor to default — restore it. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  :is(button, a, summary):focus-visible {
+    outline: 2px solid var(--color-indigo-600);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    button,
+    a {
+      transition:
+        color 150ms,
+        background-color 150ms,
+        border-color 150ms,
+        opacity 150ms;
+    }
+  }
+}

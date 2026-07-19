@@ -21,6 +21,7 @@ import { Report } from './Report';
 import { everyoneVotedAdvance } from './host-voting';
 import { SESSION_ID_KEY } from './create-session';
 import { landedRoute, rejoinSession } from './reconnect';
+import { btnNeutral, btnGhost } from './button';
 
 type Route =
   | 'loading'
@@ -401,7 +402,7 @@ export default function App() {
                 <button
                   onClick={() => setEditing(false)}
                   aria-label="Close"
-                  className="text-slate-400 hover:text-slate-600"
+                  className={btnGhost}
                 >
                   ✕
                 </button>
@@ -415,7 +416,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+                  className={`${btnNeutral} flex-1 rounded-lg px-4 py-2.5`}
                 >
                   Cancel
                 </button>
