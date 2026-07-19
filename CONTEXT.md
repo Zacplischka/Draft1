@@ -65,6 +65,10 @@ _Avoid_: Vote value, rating, points
 **Close voting**:
 The host action ending the voting phase early with whatever scores are in. Voting otherwise auto-completes when every participant has scored the full deck.
 
+**Cancel session**:
+The host action terminating a session before results, for everyone. Everything about the session is discarded — no ranked list, no report, no trace in history — and all participants are ejected with a notice. Distinct from Close voting, which ends voting early but still *produces* results.
+_Avoid_: Delete session, abort, end session
+
 **Ranked list**:
 The end-of-session output all participants see: solutions ordered by average confidence score, winner highlighted.
 _Avoid_: Results, leaderboard
