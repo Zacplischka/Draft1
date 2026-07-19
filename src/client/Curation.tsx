@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { JoinCode, Stepper } from './HostLobby';
+import { Modal } from './Modal';
 import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger } from './button';
 import {
   addSolution,
@@ -30,8 +31,8 @@ function CombineModal({
 }) {
   const [text, setText] = useState(() => defaultCombinedText(sources.map((s) => s.text)));
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+    <Modal onClose={onCancel} className="m-auto w-[calc(100%-2rem)] max-w-lg">
+      <div className="rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Combine {sources.length} Solutions</h2>
           <button onClick={onCancel} aria-label="Close" className={btnGhost}>
@@ -47,7 +48,7 @@ function CombineModal({
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, SOLUTION_MAX_LENGTH))}
           rows={3}
-          autoFocus
+          data-autofocus
           className="mt-1 w-full rounded-xl border border-indigo-300 bg-white p-3 text-slate-900 focus:border-indigo-500 focus:outline-none"
         />
         <div className="mt-3 text-sm font-medium text-slate-700">
@@ -77,7 +78,7 @@ function CombineModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -93,8 +94,8 @@ function DeleteDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
+    <Modal onClose={onCancel} className="m-auto w-[calc(100%-2rem)] max-w-sm">
+      <div className="relative rounded-2xl bg-white p-6 text-center shadow-xl">
         <button
           onClick={onCancel}
           aria-label="Close"
@@ -124,7 +125,7 @@ function DeleteDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

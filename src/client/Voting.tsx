@@ -3,7 +3,8 @@ import { SCORE_MAX, SCORE_MIN, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete } from './submit-solution';
 import { ProgressBar } from './HostLobby';
-import { btnPrimary, btnSecondary, btnNeutral, btnLink } from './button';
+import { btnPrimary, btnSecondary, btnNeutral, btnLink, btnGhost } from './button';
+import { Modal } from './Modal';
 import {
   angleToScore,
   clearScores,
@@ -199,8 +200,15 @@ function AdjustSheet({
   onReswipe: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-slate-900/40 sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-3xl bg-white p-6 text-center shadow-xl sm:rounded-3xl">
+    // Escape/backdrop/✕ all dismiss without casting — same landing as Re-swipe (issue #27).
+    <Modal
+      onClose={onReswipe}
+      className="mx-auto mb-0 mt-auto w-full max-w-md sm:m-auto sm:w-[calc(100%-2rem)]"
+    >
+      <div className="relative rounded-t-3xl bg-white p-6 text-center shadow-xl sm:rounded-3xl">
+        <button onClick={onReswipe} aria-label="Close" className={`${btnGhost} absolute right-4 top-4`}>
+          ✕
+        </button>
         <h2 className="text-lg font-semibold text-slate-900">Adjust your Confidence score</h2>
         <div className="mt-2 text-6xl font-semibold" style={{ color: scoreColor(score) }}>
           {score}
@@ -232,7 +240,7 @@ function AdjustSheet({
           Re-swipe
         </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
