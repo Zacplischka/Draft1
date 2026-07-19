@@ -6,6 +6,7 @@ import { JoinCode } from './HostLobby';
 import { closeVoting, initials } from './host-voting';
 import { btnSecondary, btnDangerOutline, btnGhost, BusyButton } from './button';
 import { ErrorText } from './Announce';
+import { CancelSessionButton } from './CancelSession';
 
 function StatCard({ icon, tint, value, label }: { icon: string; tint: string; value: string; label: string }) {
   return (
@@ -109,7 +110,11 @@ export function HostVotingControl({ state, emit }: { state: SessionState; emit: 
           >
             🚫 Close voting
           </button>
-          <p className="text-sm text-slate-500">Voting closes automatically when every Participant finishes.</p>
+          <CancelSessionButton
+            emit={emit}
+            className="rounded-lg border border-red-200 px-4 py-2.5"
+          />
+          <p className="flex-1 text-sm text-slate-500">Voting closes automatically when every Participant finishes.</p>
         </div>
         {error && <ErrorText className="mt-3">{error}</ErrorText>}
       </main>

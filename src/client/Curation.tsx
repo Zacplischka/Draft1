@@ -6,6 +6,7 @@ import { JoinCode, Stepper } from './HostLobby';
 import { Modal } from './Modal';
 import { ErrorText } from './Announce';
 import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger, BusyButton } from './button';
+import { CancelSessionButton } from './CancelSession';
 import {
   addSolution,
   combineSolutions,
@@ -383,7 +384,11 @@ export function Curation({ state, emit }: { state: SessionState; emit: Emit }) {
         {error && <ErrorText className="mt-4">{error}</ErrorText>}
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="flex items-center gap-2 text-sm text-slate-500">
+          <CancelSessionButton
+            emit={emit}
+            className="rounded-lg border border-red-200 px-4 py-2.5"
+          />
+          <p className="flex flex-1 items-center gap-2 text-sm text-slate-500">
             <span aria-hidden>🕐</span> You can leave this page — we&rsquo;ll bring you back here.
           </p>
           <BusyButton

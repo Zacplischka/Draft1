@@ -7,6 +7,7 @@ import { ProgressBar } from './ProgressBar';
 import { btnPrimary, btnSecondary, btnNeutral, btnLink, btnGhost } from './button';
 import { Modal } from './Modal';
 import { ErrorText, LiveStatus } from './Announce';
+import { CancelSessionButton } from './CancelSession';
 import {
   angleToScore,
   clearScores,
@@ -322,6 +323,12 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
     <div className="flex min-h-screen flex-col bg-slate-100">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
         <span className="font-semibold text-slate-900">🗳️ Group Decision</span>
+        {state.isHost && (
+          <CancelSessionButton
+            emit={emit}
+            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm"
+          />
+        )}
       </header>
       <main className="mx-auto w-full max-w-md flex-1 p-6 pb-24">
         <div className="flex items-center gap-3">

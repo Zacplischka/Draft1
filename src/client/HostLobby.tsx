@@ -1,55 +1,14 @@
 import { useState } from 'react';
-import { Check, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Pencil, Trash2 } from 'lucide-react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete, submitSolution } from './submit-solution';
-import { addSolution, beginCuration, cancelSession, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
-import { btnPrimary, btnDanger, btnSecondary, btnNeutral, btnLink, btnGhost, btnGhostDanger, BusyButton, Spinner } from './button';
+import { addSolution, beginCuration, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
+import { btnPrimary, btnSecondary, btnLink, btnGhost, btnGhostDanger, BusyButton, Spinner } from './button';
 import { ErrorText, LiveStatus } from './Announce';
 import { ProgressBar } from './ProgressBar';
 import { CopyButton } from './CopyButton';
-import { Modal } from './Modal';
-
-function CancelSessionDialog({
-  busy,
-  error,
-  onClose,
-  onConfirm,
-}: {
-  busy: boolean;
-  error: string | null;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Modal onClose={onClose} className="m-auto w-[calc(100%-2rem)] max-w-sm">
-      <div className="relative rounded-2xl bg-white p-6 text-center shadow-xl">
-        <button onClick={onClose} aria-label="Close" className={`${btnGhost} absolute right-4 top-4`}>
-          <X className="h-4 w-4" aria-hidden />
-        </button>
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500" aria-hidden>
-          <Trash2 className="h-6 w-6" />
-        </div>
-        <h2 className="mt-3 text-lg font-semibold text-slate-900">Cancel this session?</h2>
-        <p className="mt-1 text-sm text-slate-500">Everyone will be ejected and all submissions and votes discarded.</p>
-        {error && <ErrorText className="mt-2">{error}</ErrorText>}
-        <div className="mt-5 flex justify-center gap-3">
-          <button data-autofocus onClick={onClose} className={`${btnNeutral} rounded-lg px-5 py-2.5`}>
-            Keep session
-          </button>
-          <BusyButton
-            onClick={onConfirm}
-            busy={busy}
-            busyLabel="Cancelling…"
-            className={`${btnDanger} rounded-lg px-5 py-2.5`}
-          >
-            Cancel session
-          </BusyButton>
-        </div>
-      </div>
-    </Modal>
-  );
-}
+import { CancelSessionButton } from './CancelSession';
 
 export function JoinCode({ code }: { code: string }) {
   return (
@@ -379,17 +338,8 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
 /** Mock 06 — the host's lobby, both workflows. Live data arrives via session:state snapshots. */
 export function HostLobby({ state, emit }: { state: SessionState; emit: Emit }) {
   const [error, setError] = useState<string | null>(null);
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [cancelBusy, setCancelBusy] = useState(false);
   const fail = (err: unknown) =>
     setError(`Something went wrong (${err instanceof Error ? err.message : 'unknown'}). Please try again.`);
-  function confirmCancel() {
-    setCancelBusy(true);
-    setError(null);
-    cancelSession(emit)
-      .catch(fail)
-      .finally(() => setCancelBusy(false));
-  }
   const workflowLabel = state.workflow === 'preset' ? 'Preset' : 'Crowdsourced';
   return (
     <div className="min-h-screen bg-slate-100">
@@ -429,28 +379,14 @@ export function HostLobby({ state, emit }: { state: SessionState; emit: Emit }) 
         )}
 
         {error && <ErrorText className="mt-4">{error}</ErrorText>}
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setCancelOpen(true);
-          }}
-          className={`${btnGhostDanger} mt-4 w-full rounded-lg border border-red-200 px-4 py-2.5`}
-        >
-          Cancel session
-        </button>
+        <CancelSessionButton
+          emit={emit}
+          className="mt-4 w-full rounded-lg border border-red-200 px-4 py-2.5"
+        />
         <p className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-500">
           <span aria-hidden>🕐</span> You can leave this page — we&rsquo;ll bring you back here.
         </p>
       </main>
-      {cancelOpen && (
-        <CancelSessionDialog
-          busy={cancelBusy}
-          error={error}
-          onClose={() => setCancelOpen(false)}
-          onConfirm={confirmCancel}
-        />
-      )}
     </div>
   );
 }
