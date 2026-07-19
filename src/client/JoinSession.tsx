@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { SESSION_ID_KEY } from './create-session';
 import { joinSession, previewSession, screenFor, type Preview, type Screen } from './join-session';
-import { btnLink, btnPrimary } from './button';
+import { btnLink, btnPrimary, BusyButton } from './button';
 import { ErrorText } from './Announce';
 
 const CODE_LENGTH = 6;
@@ -190,9 +190,15 @@ export function JoinSession({
               <div className="mt-6">
                 <CodeInput code={code} onChange={setCode} invalid={false} autoFocus />
               </div>
-              <button type="submit" disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
-                {busy ? 'Finding…' : 'Find session'}
-              </button>
+              <BusyButton
+                type="submit"
+                busy={busy}
+                busyLabel="Finding…"
+                disabled={code.length < CODE_LENGTH}
+                className={primaryButton}
+              >
+                Find session
+              </BusyButton>
             </form>
           </>
         )}
@@ -214,9 +220,15 @@ export function JoinSession({
                 <CodeInput code={code} onChange={setCode} invalid />
                 <ErrorText className="mt-1">Check the Join code and try again.</ErrorText>
               </div>
-              <button type="submit" disabled={code.length < CODE_LENGTH || busy} className={primaryButton}>
-                {busy ? 'Finding…' : 'Try again'}
-              </button>
+              <BusyButton
+                type="submit"
+                busy={busy}
+                busyLabel="Finding…"
+                disabled={code.length < CODE_LENGTH}
+                className={primaryButton}
+              >
+                Try again
+              </BusyButton>
             </form>
           </div>
         )}
@@ -227,9 +239,9 @@ export function JoinSession({
             <h1 className="mt-4 text-2xl font-semibold text-slate-900">Session found</h1>
             <p className="mt-2 text-slate-500">{preview.problem}</p>
             <PreviewRows preview={preview} countClass="text-green-600" />
-            <button onClick={() => void join()} disabled={busy} className={primaryButton}>
-              {busy ? 'Joining…' : screen === 'rejoin' ? 'Rejoin session' : 'Join session'}
-            </button>
+            <BusyButton onClick={() => void join()} busy={busy} busyLabel="Joining…" className={primaryButton}>
+              {screen === 'rejoin' ? 'Rejoin session' : 'Join session'}
+            </BusyButton>
           </div>
         )}
 

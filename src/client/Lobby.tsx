@@ -1,10 +1,14 @@
 import type { SessionState } from '../shared/contract';
-import { btnLink } from './button';
+import { btnLink, Spinner } from './button';
 
 // ponytail: placeholder host lobby — #16 builds the real crowdsourced/preset lobbies.
 export function Lobby({ state, onBack }: { state: SessionState | null; onBack: () => void }) {
   if (!state) {
-    return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center gap-3 text-slate-400">
+        <Spinner className="h-5 w-5" /> Loading…
+      </div>
+    );
   }
   return (
     <div className="min-h-screen bg-slate-100">
