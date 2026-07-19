@@ -3,6 +3,7 @@ import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete, submitSolution } from './submit-solution';
 import { addSolution, beginCuration, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
+import { btnPrimary, btnSecondary, btnLink, btnGhost, btnGhostDanger } from './button';
 
 export function JoinCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -21,7 +22,7 @@ export function JoinCode({ code }: { code: string }) {
             })
           }
           aria-label="Copy join code"
-          className="rounded border border-slate-200 px-2 py-0.5 text-sm text-slate-400 hover:text-slate-600"
+          className={`${btnGhost} rounded border border-slate-200 px-2 py-0.5 text-sm`}
         >
           {copied ? '✓' : '⧉'}
         </button>
@@ -106,7 +107,7 @@ function HostSubmit({ state, emit }: { state: SessionState; emit: Emit }) {
       <button
         onClick={() => void submit()}
         disabled={!text.trim() || busy}
-        className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+        className={`${btnPrimary} mt-2 rounded-lg px-4 py-2`}
       >
         {busy ? 'Submitting…' : 'Submit solution'}
       </button>
@@ -165,7 +166,7 @@ function CrowdsourcedBody({ state, emit, fail }: { state: SessionState; emit: Em
               .finally(() => setBusy(false));
           }}
           disabled={busy}
-          className="rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+          className={`${btnPrimary} rounded-lg px-6 py-3`}
         >
           Begin curation
         </button>
@@ -245,13 +246,13 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                 />
                 <button
                   onClick={() => saveEdit(d.id)}
-                  className="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                  className={`${btnLink} shrink-0 text-sm`}
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
-                  className="shrink-0 text-sm text-slate-400 hover:text-slate-600"
+                  className={`${btnGhost} shrink-0 text-sm`}
                 >
                   Cancel
                 </button>
@@ -266,7 +267,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                       setEditText(d.text);
                     }}
                     aria-label={`Edit ${d.text}`}
-                    className="rounded border border-slate-200 px-2 py-1 text-slate-400 hover:text-slate-600"
+                    className={`${btnGhost} rounded border border-slate-200 px-2 py-1`}
                   >
                     ✏️
                   </button>
@@ -274,7 +275,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                     onClick={() => run(deleteSolution(emit, d.id))}
                     disabled={busy}
                     aria-label={`Delete ${d.text}`}
-                    className="rounded border border-slate-200 px-2 py-1 text-slate-400 hover:text-red-600"
+                    className={`${btnGhostDanger} rounded border border-slate-200 px-2 py-1`}
                   >
                     🗑️
                   </button>
@@ -297,7 +298,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
           <button
             onClick={add}
             disabled={!draft.trim() || busy}
-            className="shrink-0 rounded-lg border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:border-slate-300 disabled:text-slate-400"
+            className={`${btnSecondary} shrink-0 rounded-lg border-indigo-600 px-3 py-2 text-sm`}
           >
             Add solution
           </button>
@@ -323,7 +324,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
       <button
         onClick={() => void start()}
         disabled={busy}
-        className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-3 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+        className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-3`}
       >
         Start voting
       </button>

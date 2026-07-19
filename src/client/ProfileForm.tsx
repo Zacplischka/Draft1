@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { DEPARTMENTS, ROLES, TENURES, type Profile } from '../shared/contract';
+import { btnPrimary } from './button';
 
 const FIELDS = [
   ['department', 'Department', DEPARTMENTS],
@@ -51,7 +52,7 @@ export function ProfileForm({
       <div className="flex gap-3 pt-1">
         <button
           type="submit"
-          className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700"
+          className={`${btnPrimary} flex-1 rounded-lg px-4 py-2.5`}
         >
           {submitLabel}
         </button>

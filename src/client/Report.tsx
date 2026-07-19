@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SUPPRESSION_N, type HostReport } from '../shared/contract';
 import { formatDate, workflowLabel } from './dashboard';
+import { btnPrimary, btnSecondary, tabIdle } from './button';
 import {
   DIMENSIONS,
   cellTone,
@@ -107,7 +108,7 @@ export function Report({
             <p className="text-slate-500">Could not load the report.</p>
             <button
               onClick={() => setEpoch((n) => n + 1)}
-              className="rounded-lg bg-indigo-600 px-6 py-2.5 font-medium text-white hover:bg-indigo-700"
+              className={`${btnPrimary} rounded-lg px-6 py-2.5`}
             >
               Try again
             </button>
@@ -117,7 +118,7 @@ export function Report({
         )}
         <button
           onClick={onBack}
-          className="rounded-lg border border-indigo-300 px-5 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+          className={`${btnSecondary} rounded-lg border-indigo-300 px-5 py-2.5`}
         >
           ← {backLabel}
         </button>
@@ -139,7 +140,7 @@ export function Report({
           <div className="flex flex-wrap gap-3">
             <button
               onClick={onBack}
-              className="rounded-lg border border-indigo-300 px-4 py-2 font-medium text-indigo-600 hover:bg-indigo-50"
+              className={`${btnSecondary} rounded-lg border-indigo-300 px-4 py-2`}
             >
               ← {backLabel}
             </button>
@@ -150,7 +151,7 @@ export function Report({
                   () => setCsvError('Could not export the CSV. Please try again.'),
                 )
               }
-              className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+              className={`${btnPrimary} rounded-lg px-4 py-2`}
             >
               ⬇️ Export CSV
             </button>
@@ -192,7 +193,7 @@ export function Report({
                   key={d.key}
                   onClick={() => setDim(d.key)}
                   className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                    dim === d.key ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 hover:text-slate-900'
+                    dim === d.key ? 'bg-indigo-100 text-indigo-700' : tabIdle
                   }`}
                 >
                   {d.label}

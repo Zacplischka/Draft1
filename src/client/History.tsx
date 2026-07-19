@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AppHeader } from './Home';
+import { btnPrimary, btnNeutral, tabIdle } from './button';
 import {
   filterSessions,
   formatDate,
@@ -82,7 +83,7 @@ export function History({
             <p className="mt-1 text-slate-500">Once you run a Session, it will appear here.</p>
             <button
               onClick={onCreate}
-              className="mt-6 w-full rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white hover:bg-indigo-700"
+              className={`${btnPrimary} mt-6 w-full rounded-xl px-6 py-3`}
             >
               Create your first session
             </button>
@@ -107,7 +108,7 @@ export function History({
                     key={f}
                     onClick={() => setFilter(f)}
                     className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize ${
-                      filter === f ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 hover:text-slate-900'
+                      filter === f ? 'bg-indigo-100 text-indigo-700' : tabIdle
                     }`}
                   >
                     {f}
@@ -124,7 +125,7 @@ export function History({
                       <th key={c.key} className="px-4 py-3 font-medium">
                         <button
                           onClick={() => toggleSort(c.key)}
-                          className="flex items-center gap-1 hover:text-slate-900"
+                          className={`flex items-center gap-1 ${tabIdle}`}
                         >
                           {c.label}
                           {sort.key === c.key && <span aria-hidden>{sort.dir === 'asc' ? '↑' : '↓'}</span>}
@@ -165,7 +166,7 @@ export function History({
                           ) : (
                             <button
                               onClick={() => onOpenReport(s.id)}
-                              className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+                              className={`${btnNeutral} rounded-lg px-3 py-1.5`}
                             >
                               Open report ›
                             </button>

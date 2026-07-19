@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SOLUTION_MAX_LENGTH, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { participantView, percentComplete, submitSolution } from './submit-solution';
+import { btnPrimary } from './button';
 
 const STEPS = [
   { label: 'Join', sub: 'You joined the session' },
@@ -136,7 +137,7 @@ export function CrowdsourcedParticipant({ state, emit }: { state: SessionState; 
               <button
                 onClick={() => void submit()}
                 disabled={!text.trim() || busy}
-                className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+                className={`${btnPrimary} mt-4 w-full rounded-lg px-4 py-2.5`}
               >
                 {busy ? 'Submitting…' : 'Submit solution'}
               </button>

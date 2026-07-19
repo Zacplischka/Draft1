@@ -1,4 +1,5 @@
 import type { SessionState } from '../shared/contract';
+import { btnLink } from './button';
 
 // ponytail: placeholder host lobby — #16 builds the real crowdsourced/preset lobbies.
 export function Lobby({ state, onBack }: { state: SessionState | null; onBack: () => void }) {
@@ -11,7 +12,7 @@ export function Lobby({ state, onBack }: { state: SessionState | null; onBack: (
         <span className="font-semibold text-slate-900">🗳️ Group Decision</span>
       </header>
       <main className="mx-auto max-w-lg p-6">
-        <button onClick={onBack} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+        <button onClick={onBack} className={`${btnLink} text-sm`}>
           &lsaquo; Sessions
         </button>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">

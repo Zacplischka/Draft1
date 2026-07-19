@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { SESSION_ID_KEY } from './create-session';
 import { joinSession, previewSession, screenFor, type Preview, type Screen } from './join-session';
+import { btnLink, btnPrimary } from './button';
 
 const CODE_LENGTH = 6;
 
@@ -162,8 +163,7 @@ export function JoinSession({
     }
   }
 
-  const primaryButton =
-    'mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300';
+  const primaryButton = `${btnPrimary} mt-6 w-full rounded-lg px-4 py-2.5`;
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -171,7 +171,7 @@ export function JoinSession({
         <span className="font-semibold text-slate-900">🗳️ Group Decision</span>
       </header>
       <main className="mx-auto max-w-md p-6">
-        <button onClick={onBack} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+        <button onClick={onBack} className={`${btnLink} text-sm`}>
           &lsaquo; Home
         </button>
 
@@ -261,7 +261,7 @@ export function JoinSession({
           </span>
           <button
             onClick={onSwitchAccount}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            className={`${btnLink} text-sm`}
           >
             Switch account
           </button>

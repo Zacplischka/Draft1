@@ -3,6 +3,7 @@ import { SCORE_MAX, SCORE_MIN, type SessionState } from '../shared/contract';
 import type { Emit } from './create-session';
 import { percentComplete } from './submit-solution';
 import { ProgressBar } from './HostLobby';
+import { btnPrimary, btnSecondary, btnNeutral, btnLink } from './button';
 import {
   angleToScore,
   clearScores,
@@ -144,7 +145,7 @@ function ManualScore({ text, onCast, onBack }: { text: string; onCast: (score: n
         <button
           onClick={() => setScore((s) => clamp(s - 1))}
           aria-label="Decrease score"
-          className="h-11 w-11 rounded-xl border border-slate-300 bg-white text-xl text-slate-700 hover:bg-slate-50"
+          className={`${btnNeutral} h-11 w-11 rounded-xl bg-white text-xl`}
         >
           −
         </button>
@@ -154,7 +155,7 @@ function ManualScore({ text, onCast, onBack }: { text: string; onCast: (score: n
         <button
           onClick={() => setScore((s) => clamp(s + 1))}
           aria-label="Increase score"
-          className="h-11 w-11 rounded-xl border border-slate-300 bg-white text-xl text-slate-700 hover:bg-slate-50"
+          className={`${btnNeutral} h-11 w-11 rounded-xl bg-white text-xl`}
         >
           +
         </button>
@@ -174,11 +175,11 @@ function ManualScore({ text, onCast, onBack }: { text: string; onCast: (score: n
       </div>
       <button
         onClick={() => onCast(score)}
-        className="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700"
+        className={`${btnPrimary} mt-6 w-full rounded-lg px-4 py-2.5`}
       >
         Set score
       </button>
-      <button onClick={onBack} className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700">
+      <button onClick={onBack} className={`${btnLink} mt-4 text-sm`}>
         Back to swipe
       </button>
     </div>
@@ -207,26 +208,26 @@ function AdjustSheet({
         <div className="mt-4 flex justify-center gap-24">
           <button
             onClick={() => onChange(clamp(score - 1))}
-            className="h-11 w-14 rounded-xl border border-slate-300 bg-white font-medium text-slate-700 hover:bg-slate-50"
+            className={`${btnNeutral} h-11 w-14 rounded-xl bg-white`}
           >
             −1
           </button>
           <button
             onClick={() => onChange(clamp(score + 1))}
-            className="h-11 w-14 rounded-xl border border-slate-300 bg-white font-medium text-slate-700 hover:bg-slate-50"
+            className={`${btnNeutral} h-11 w-14 rounded-xl bg-white`}
           >
             +1
           </button>
         </div>
         <button
           onClick={onSubmit}
-          className="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700"
+          className={`${btnPrimary} mt-6 w-full rounded-lg px-4 py-2.5`}
         >
           Submit score
         </button>
         <button
           onClick={onReswipe}
-          className="mt-3 w-full rounded-lg border border-indigo-200 px-4 py-2.5 font-medium text-indigo-600 hover:bg-indigo-50"
+          className={`${btnSecondary} mt-3 w-full rounded-lg border-indigo-200 px-4 py-2.5`}
         >
           Re-swipe
         </button>
@@ -345,7 +346,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
             <p className="mt-2 text-slate-500">Your previous scores are saved on this device.</p>
             <button
               onClick={() => setBridge(false)}
-              className="mt-8 w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-700"
+              className={`${btnPrimary} mt-8 w-full rounded-lg px-4 py-2.5`}
             >
               Continue voting
             </button>
@@ -385,7 +386,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
             <p className="text-red-600">Something went wrong submitting your ballot.</p>
             <button
               onClick={() => void finish(scores)}
-              className="mt-4 rounded-lg bg-indigo-600 px-6 py-2.5 font-medium text-white hover:bg-indigo-700"
+              className={`${btnPrimary} mt-4 rounded-lg px-6 py-2.5`}
             >
               Try again
             </button>
@@ -398,7 +399,7 @@ export function Voting({ state, emit }: { state: SessionState; emit: Emit }) {
                 <div className="mt-8 text-center">
                   <button
                     onClick={() => setMode('manual')}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    className={`${btnLink} text-sm`}
                   >
                     Use manual buttons
                   </button>
