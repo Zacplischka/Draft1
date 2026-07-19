@@ -8,7 +8,7 @@
   button:disabled {
     cursor: not-allowed;
   }
-  :is(button, a, summary):focus-visible {
+  :is(button, a, summary, input, textarea, select):focus-visible {
     outline: 2px solid var(--color-indigo-600);
     outline-offset: 2px;
   }

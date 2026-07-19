@@ -5,9 +5,10 @@ import { percentComplete, submitSolution } from './submit-solution';
 import { addSolution, beginCuration, deleteSolution, editSolution, hostSteps, startVoting } from './host-lobby';
 import { btnPrimary, btnSecondary, btnLink, btnGhost, btnGhostDanger } from './button';
 import { ErrorText, LiveStatus } from './Announce';
+import { ProgressBar } from './ProgressBar';
+import { CopyButton } from './CopyButton';
 
 export function JoinCode({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
   return (
     <div>
       <div className="text-sm text-slate-500">Join code</div>
@@ -15,18 +16,12 @@ export function JoinCode({ code }: { code: string }) {
         <span className="text-2xl font-semibold tracking-widest text-slate-900">
           {code.slice(0, 3)} {code.slice(3)}
         </span>
-        <button
-          onClick={() =>
-            void navigator.clipboard.writeText(code).then(() => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            })
-          }
-          aria-label="Copy join code"
+        <CopyButton
+          text={code}
+          label="📋 Copy"
+          ariaLabel="Copy join code"
           className={`${btnGhost} rounded border border-slate-200 px-2 py-0.5 text-sm`}
-        >
-          {copied ? '✓' : '⧉'}
-        </button>
+        />
       </div>
     </div>
   );
@@ -48,14 +43,6 @@ export function Stepper({ steps, active = 0 }: { steps: string[]; active?: numbe
           </span>
         </div>
       ))}
-    </div>
-  );
-}
-
-export function ProgressBar({ pct }: { pct: number }) {
-  return (
-    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-      <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -101,7 +88,7 @@ function HostSubmit({ state, emit }: { state: SessionState; emit: Emit }) {
               onChange={(e) => setText(e.target.value.slice(0, SOLUTION_MAX_LENGTH))}
               placeholder="Describe your best solution..."
               rows={3}
-              className="w-full rounded-xl border border-slate-300 bg-white p-3 pb-7 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 pb-7 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
             />
             <span className="pointer-events-none absolute bottom-3 right-3 text-sm text-slate-400">
               {text.length} / {SOLUTION_MAX_LENGTH}
@@ -247,7 +234,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
                   }}
                   maxLength={SOLUTION_MAX_LENGTH}
                   autoFocus
-                  className="w-full bg-transparent py-1 text-slate-900 focus:outline-none"
+                  className="w-full bg-transparent py-1 text-slate-900"
                 />
                 <button
                   onClick={() => saveEdit(d.id)}
@@ -298,7 +285,7 @@ function PresetBody({ state, emit, fail }: { state: SessionState; emit: Emit; fa
             }}
             maxLength={SOLUTION_MAX_LENGTH}
             placeholder="Add a solution"
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500"
           />
           <button
             onClick={add}

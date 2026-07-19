@@ -41,7 +41,7 @@ export function SignIn({ onDevSignIn }: { onDevSignIn: () => void }) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
                 aria-label="Dev sign-in name"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500"
               />
               <button className={`${btnSecondary} w-full rounded-lg border-indigo-600 px-4 py-2.5`}>
                 Continue (dev sign-in)

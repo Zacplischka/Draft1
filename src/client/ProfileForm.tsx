@@ -41,7 +41,7 @@ export function ProfileForm({
           <select
             value={form[key]}
             onChange={(e) => setForm({ ...form, [key]: e.target.value } as Profile)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 focus:border-indigo-500"
           >
             {options.map((o) => (
               <option key={o}>{o}</option>

@@ -4,6 +4,8 @@ import { rankedListText } from './ranked-list';
 import { downloadReportCsv } from './host-report';
 import { btnPrimary, btnSecondary } from './button';
 import { ErrorText } from './Announce';
+import { ProgressBar } from './ProgressBar';
+import { CopyButton } from './CopyButton';
 
 /** Circular average-confidence badge; "—" on null (zero-ballot close), never NaN. */
 function AvgBadge({ avg, big, green }: { avg: number | null; big?: boolean; green?: boolean }) {
@@ -51,18 +53,7 @@ export function RankedList({
 }) {
   const ranked = state.results?.ranked ?? [];
   const [winner, ...rest] = ranked;
-  const [copied, setCopied] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
-
-  function copy() {
-    navigator.clipboard
-      .writeText(rankedListText(state.problem, ranked))
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {}); // clipboard permission denied — nothing to recover
-  }
 
   async function exportCsv() {
     setCsvError(null);
@@ -113,11 +104,7 @@ export function RankedList({
               <span className="shrink-0 text-xl font-bold text-slate-900">#{i + 2}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-slate-900">{r.text}</p>
-                {r.avg !== null && (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                    <div className="h-full rounded-full bg-indigo-600" style={{ width: `${r.avg}%` }} />
-                  </div>
-                )}
+                {r.avg !== null && <ProgressBar pct={r.avg} className="mt-2 h-1.5" color="bg-indigo-600" />}
               </div>
               <AvgBadge avg={r.avg} />
               <span className="hidden shrink-0 text-sm text-slate-500 sm:block">Average confidence</span>
@@ -126,12 +113,11 @@ export function RankedList({
         </ul>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <button
-            onClick={copy}
+          <CopyButton
+            text={rankedListText(state.problem, ranked)}
+            label="📋 Copy Ranked list"
             className={`${btnSecondary} rounded-lg border-indigo-300 px-5 py-2.5`}
-          >
-            {copied ? '✓ Copied' : '📋 Copy Ranked list'}
-          </button>
+          />
           <button
             onClick={onDone}
             className={`${btnPrimary} rounded-lg px-8 py-2.5`}
