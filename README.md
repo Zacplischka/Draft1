@@ -31,7 +31,32 @@ and run the server against the same project: `DATABASE_URL=... SUPABASE_URL=... 
 
 Live at **https://group-decision-45846577542.australia-southeast1.run.app** — Cloud Run service `group-decision` (GCP project `group-decision-app`, region `australia-southeast1`, max 1 instance + session affinity for Socket.IO), backed by Supabase project `group-decision` (`dqdelrwrbjzprtwbttwj`, Sydney). Migrations in `migrations/` are applied automatically at server boot.
 
-Supabase is on the free tier and **auto-pauses after ~1 week of inactivity** — the server then crashes at boot with `tenant/user postgres.<ref> not found` and Cloud Run serves 503s. Unpause from the Supabase dashboard or `POST https://api.supabase.com/v1/projects/dqdelrwrbjzprtwbttwj/restore`.
+> **History:** the service originally lived in GCP project `mypickle-486702` — that project's billing was cut by its own budget killswitch (Jul 2026) and stays dead. Everything now runs in `group-decision-app`; ignore any `mypickle` references you find in GCP.
+
+CI deploys on every push to `main` (`.github/workflows/deploy.yml`), authenticated via repo secret `GCP_SA_KEY` as `github-deployer@mypickle-486702.iam.gserviceaccount.com` — the SA lives in the dead project (identities aren't billing-gated) and has deploy roles granted on `group-decision-app`.
+
+### Outage runbook
+
+Three links in the chain can independently take the site down. Diagnose with:
+
+```sh
+# 1. Is it up? (503 = container failing at boot; check the crash log)
+curl -s -o /dev/null -w "%{http_code}\n" https://group-decision-45846577542.australia-southeast1.run.app/
+gcloud logging read 'resource.type="cloud_run_revision" resource.labels.service_name="group-decision"' \
+  --project=group-decision-app --freshness=1d --limit=20
+
+# 2. Supabase paused? Free tier auto-pauses after ~1 week idle; boot then dies with
+#    "tenant/user postgres.dqdelrwrbjzprtwbttwj not found". INACTIVE = paused; restore takes ~3 min.
+curl -s -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" https://api.supabase.com/v1/projects | jq -r '.[] | select(.id=="dqdelrwrbjzprtwbttwj") | .status'
+curl -s -X POST -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" https://api.supabase.com/v1/projects/dqdelrwrbjzprtwbttwj/restore
+
+# 3. GCP billing cut? A $10 AUD/month budget feeds the billing-killswitch Cloud Function,
+#    which unlinks billing at 100% (Cloud Run then 503s with "billing is disabled" in the logs).
+gcloud billing projects describe group-decision-app          # billingEnabled: false = killswitch fired
+gcloud logging read 'resource.labels.service_name="billing-killswitch"' --project=group-decision-app --limit=6
+```
+
+Google sign-in bouncing users to a dead URL after auth means the Supabase auth `site_url` is stale — check `GET/PATCH https://api.supabase.com/v1/projects/dqdelrwrbjzprtwbttwj/config/auth`.
 
 Server environment (set on the Cloud Run service — **never committed**):
 
