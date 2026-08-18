@@ -30,4 +30,4 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - run: >
           gcloud run deploy group-decision --source .
-          --project=mypickle-486702 --region=australia-southeast1 --quiet
+          --project=group-decision-app --region=australia-southeast1 --quiet
